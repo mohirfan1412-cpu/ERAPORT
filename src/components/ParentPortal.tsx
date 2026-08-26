@@ -13,6 +13,7 @@ import {
   BookOpen,
   ArrowRight,
   ShieldCheck,
+  LogOut,
 } from 'lucide-react';
 
 interface ParentPortalProps {
@@ -20,6 +21,7 @@ interface ParentPortalProps {
   classes: ClassRoom[];
   reports: StudentReport[];
   settings: SchoolSettings;
+  onLogout?: () => void;
 }
 
 export const ParentPortal: React.FC<ParentPortalProps> = ({
@@ -27,6 +29,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
   classes,
   reports,
   settings,
+  onLogout,
 }) => {
   const [searchKey, setSearchKey] = useState<string>('2311063106'); // default to Dzakki for instant demo
   const [matchedStudent, setMatchedStudent] = useState<Student | null>(() => {
@@ -76,9 +79,22 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none -mt-48"></div>
 
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-amber-300 text-xs font-bold mb-3 border border-white/15 shadow-2xs">
-            <GraduationCap className="w-4 h-4 text-amber-300" />
-            <span>Portal Resmi Wali Santri & Orang Tua</span>
+          <div className="flex items-center justify-between gap-2 max-w-xl mx-auto mb-3">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-amber-300 text-xs font-bold border border-white/15 shadow-2xs">
+              <GraduationCap className="w-4 h-4 text-amber-300" />
+              <span>Portal Resmi Wali Santri & Orang Tua</span>
+            </div>
+            {onLogout && (
+              <button
+                id="btn-logout-parent"
+                onClick={onLogout}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 text-xs font-bold transition-all shadow-2xs active:scale-95"
+                title="Keluar dari Portal Wali Santri"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-300" />
+                <span>Keluar</span>
+              </button>
+            )}
           </div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
             Cek & Unduh Raport Al-Qur'an Santri

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserAccount, SchoolSettings, GoogleWorkspaceDatabaseState } from '../types';
 import {
   BookOpen,
@@ -12,8 +12,10 @@ import {
   IdCard,
   Settings,
   Database,
+  LogOut,
+  Menu,
+  X,
   Sparkles,
-  CheckCircle2,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -26,6 +28,7 @@ interface NavbarProps {
   onOpenBackupModal: () => void;
   onOpenGoogleDbModal?: () => void;
   onOpenUserManager?: () => void;
+  onLogout?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
 }
@@ -40,63 +43,77 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBackupModal,
   onOpenGoogleDbModal,
   onOpenUserManager,
+  onLogout,
   isGoogleConnected = false,
   googleDbState,
 }) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogoutClick = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      onOpenAuthModal();
+    }
+  };
+
   return (
-    <header className="bg-gradient-to-r from-[#07193b]/90 via-[#0c245c]/85 to-[#0b1c48]/90 backdrop-blur-2xl text-white sticky top-0 z-30 border-b border-white/15 shadow-xl shadow-blue-950/25">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16 gap-3">
+    <header className="bg-gradient-to-r from-[#07193b] via-[#0c245c] to-[#0b1c48] text-white sticky top-0 z-30 border-b border-white/15 shadow-xl shadow-blue-950/25">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-6">
+        {/* Main Navbar Row */}
+        <div className="flex items-center justify-between min-h-[60px] sm:h-16 py-2 sm:py-0 gap-2 sm:gap-4">
           {/* Left: Brand / Logo */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 text-blue-950 flex items-center justify-center font-bold shadow-lg shadow-amber-400/25 border border-amber-200/50">
-              <BookOpen className="w-5 h-5 text-blue-950" />
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 text-blue-950 flex items-center justify-center font-bold shadow-lg shadow-amber-400/25 border border-amber-200/50">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-blue-950" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm sm:text-base tracking-tight bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-extrabold text-xs sm:text-sm lg:text-base tracking-tight bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">
                   E-Raport Al-Qur'an
                 </span>
-                <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-xs tracking-wider">
-                  UMMI & Tahfidz
+                <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full uppercase shadow-xs tracking-wider shrink-0">
+                  UMMI
                 </span>
               </div>
-              <p className="text-[11px] text-blue-200/80 hidden sm:flex items-center gap-1.5">
-                <span className="font-medium">{settings.schoolName || 'Lembaga Pendidikan Al-Qur’an'}</span>
+              <p className="text-[10px] sm:text-[11px] text-blue-200/80 hidden md:flex items-center gap-1.5 truncate max-w-[240px] lg:max-w-none">
+                <span className="font-medium truncate">{settings.schoolName || 'Lembaga Pendidikan Al-Qur’an'}</span>
                 <span className="opacity-40">•</span>
-                <span>Smst. {settings.semester} TP {settings.academicYear}</span>
+                <span className="shrink-0">Smst. {settings.semester} TP {settings.academicYear}</span>
               </p>
             </div>
           </div>
 
-          {/* Center: Main Navigation Tabs (Desktop Glass Bar) */}
-          <nav className="hidden lg:flex items-center gap-1.5 bg-black/25 backdrop-blur-xl p-1.5 rounded-2xl border border-white/15 text-xs font-semibold shadow-inner">
+          {/* Center: Main Navigation Tabs (Desktop / Tablet) */}
+          <nav className="hidden md:flex items-center gap-1 bg-black/25 backdrop-blur-xl p-1 rounded-2xl border border-white/15 text-xs font-semibold shadow-inner">
             {currentUser.role === 'super_admin' && (
               <button
                 id="nav-dashboard"
                 onClick={() => onNavigate('dashboard')}
-                className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all duration-200 ${
                   activeView === 'dashboard'
                     ? 'bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 font-bold shadow-md shadow-amber-400/25 scale-[1.02]'
                     : 'text-blue-100/80 hover:text-white hover:bg-white/10'
                 }`}
+                title="Dashboard Koordinator"
               >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Dashboard</span>
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Dashboard</span>
               </button>
             )}
 
             <button
               id="nav-editor"
               onClick={() => onNavigate('editor')}
-              className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all duration-200 ${
                 activeView === 'editor'
                   ? 'bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 font-bold shadow-md shadow-amber-400/25 scale-[1.02]'
                   : 'text-blue-100/80 hover:text-white hover:bg-white/10'
               }`}
+              title="Input Nilai Raport Santri"
             >
-              <FileText className="w-4 h-4" />
-              <span>Input Nilai Raport</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Input Nilai</span>
             </button>
 
             {currentUser.role === 'super_admin' && (
@@ -104,27 +121,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="nav-students"
                   onClick={() => onNavigate('students')}
-                  className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all duration-200 ${
                     activeView === 'students'
                       ? 'bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 font-bold shadow-md shadow-amber-400/25 scale-[1.02]'
                       : 'text-blue-100/80 hover:text-white hover:bg-white/10'
                   }`}
+                  title="Manajemen Data Santri"
                 >
-                  <Users className="w-4 h-4" />
-                  <span>Data Santri</span>
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Santri</span>
                 </button>
 
                 <button
                   id="nav-classes"
                   onClick={() => onNavigate('classes')}
-                  className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all duration-200 ${
                     activeView === 'classes'
                       ? 'bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 font-bold shadow-md shadow-amber-400/25 scale-[1.02]'
                       : 'text-blue-100/80 hover:text-white hover:bg-white/10'
                   }`}
+                  title="Manajemen Data Kelas"
                 >
-                  <Layers className="w-4 h-4" />
-                  <span>Data Kelas</span>
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Kelas</span>
                 </button>
               </>
             )}
@@ -132,37 +151,38 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-parent"
               onClick={() => onNavigate('parent')}
-              className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all duration-200 ${
                 activeView === 'parent'
                   ? 'bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 font-bold shadow-md shadow-amber-400/25 scale-[1.02]'
                   : 'text-blue-100/80 hover:text-white hover:bg-white/10'
               }`}
+              title="Portal Cek Nilai Wali Santri"
             >
-              <Search className="w-4 h-4" />
-              <span>Portal Wali Santri</span>
+              <Search className="w-3.5 h-3.5" />
+              <span>Wali Santri</span>
             </button>
           </nav>
 
-          {/* Right: Quick Tools & Role Switcher */}
-          <div className="flex items-center gap-2">
-            {/* Quick Settings & Backup buttons for Super Admin */}
+          {/* Right: Quick Tools, Role Button, & Logout Button */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Tools for Super Admin (Desktop/Tablet) */}
             {currentUser.role === 'super_admin' && (
-              <div className="hidden sm:flex items-center gap-1.5 bg-black/20 backdrop-blur-md p-1 rounded-xl border border-white/10">
+              <div className="hidden sm:flex items-center gap-1 bg-black/20 backdrop-blur-md p-1 rounded-xl border border-white/10">
                 {onOpenGoogleDbModal && (
                   <button
                     id="nav-google-database"
                     onClick={onOpenGoogleDbModal}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-xs ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
                       googleDbState?.isMigrated && isGoogleConnected
                         ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 hover:bg-emerald-500/35'
                         : isGoogleConnected
                         ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 hover:bg-amber-500/35 animate-pulse'
                         : 'bg-white/10 text-blue-100 hover:text-white hover:bg-white/20 border border-white/20'
                     }`}
-                    title="Database Google Spreadsheets & Google Drive"
+                    title="Database Google Sheets & Google Drive"
                   >
                     <span
-                      className={`w-2 h-2 rounded-full ${
+                      className={`w-2 h-2 rounded-full shrink-0 ${
                         googleDbState?.isMigrated && isGoogleConnected
                           ? 'bg-emerald-400 animate-pulse'
                           : isGoogleConnected
@@ -170,27 +190,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                           : 'bg-slate-400'
                       }`}
                     />
-                    <Database className="w-3.5 h-3.5" />
-                    <span className="hidden md:inline font-bold">
-                      {googleDbState?.isMigrated && isGoogleConnected
-                        ? 'Google Sheets DB'
-                        : isGoogleConnected
-                        ? 'Migrasi Database'
-                        : 'Google DB'}
+                    <Database className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden xl:inline font-bold">
+                      {googleDbState?.isMigrated && isGoogleConnected ? 'Sheets DB' : 'Google DB'}
                     </span>
                   </button>
                 )}
-                {currentUser.role === 'super_admin' && onOpenUserManager && (
+
+                {onOpenUserManager && (
                   <button
                     id="nav-superadmin-user-manager"
                     onClick={onOpenUserManager}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
-                    title="Panel Manajemen Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
+                    title="Manajemen Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin"
                   >
                     <IdCard className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span className="hidden sm:inline">Kelola Akun & NIY</span>
+                    <span className="hidden xl:inline">Kelola Akun</span>
                   </button>
                 )}
+
                 <button
                   id="nav-quick-settings"
                   onClick={onOpenSettingsModal}
@@ -199,6 +217,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <Settings className="w-4 h-4" />
                 </button>
+
                 <button
                   id="nav-quick-backup"
                   onClick={onOpenBackupModal}
@@ -210,23 +229,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* Offline Status Badge */}
-            <div
-              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-blue-950/70 border border-amber-400/30 text-amber-300 rounded-xl text-[11px] font-semibold backdrop-blur-md shadow-inner"
-              title="Aplikasi dapat beroperasi 100% offline tanpa internet"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-              <span>Offline Ready</span>
-            </div>
-
-            {/* Role / User Button */}
+            {/* User Profile Badge (Clickable to view/switch profile) */}
             <button
               id="btn-user-role-badge"
               onClick={onOpenAuthModal}
-              className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-3 py-1.5 rounded-2xl transition-all text-left backdrop-blur-xl group shadow-sm active:scale-95"
-              title="Klik untuk Masuk / Ganti Portal Akun & NIY"
+              className="flex items-center gap-1.5 sm:gap-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-2 sm:px-2.5 py-1.5 rounded-xl sm:rounded-2xl transition-all text-left backdrop-blur-xl group shadow-sm active:scale-95"
+              title="Profil Pengguna & Portal Masuk"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-blue-950 flex items-center justify-center font-bold text-xs shadow-md shadow-amber-400/20 group-hover:rotate-6 transition-transform">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-blue-950 flex items-center justify-center font-bold text-xs shadow-md shadow-amber-400/20 shrink-0">
                 {currentUser.role === 'super_admin' ? (
                   <ShieldCheck className="w-4 h-4" />
                 ) : currentUser.role === 'parent' ? (
@@ -236,30 +246,108 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
               <div className="hidden sm:block">
-                <div className="text-xs font-bold leading-tight text-white group-hover:text-amber-200 transition-colors truncate max-w-[130px]">
+                <div className="text-xs font-bold leading-tight text-white group-hover:text-amber-200 transition-colors truncate max-w-[90px] md:max-w-[120px]">
                   {currentUser.name}
                 </div>
-                <div className="text-[10px] text-amber-300/90 font-extrabold tracking-wider flex items-center gap-1">
+                <div className="text-[9px] md:text-[10px] text-amber-300/90 font-extrabold tracking-wider flex items-center gap-1">
                   <span className="uppercase">
                     {currentUser.role === 'super_admin'
                       ? 'Super Admin'
                       : currentUser.role === 'coordinator'
-                      ? 'Admin Khusus'
+                      ? 'Admin'
                       : currentUser.role === 'parent'
-                      ? 'Wali Santri'
-                      : 'Guru Khusus'}
+                      ? 'Wali'
+                      : 'Guru'}
                   </span>
                   {currentUser.niy && currentUser.niy !== '-' && (
-                    <span className="opacity-75 font-mono text-[9px]">({currentUser.niy})</span>
+                    <span className="opacity-75 font-mono text-[9px] hidden lg:inline">({currentUser.niy})</span>
                   )}
                 </div>
               </div>
             </button>
+
+            {/* Logout / Keluar Button */}
+            <button
+              id="btn-navbar-logout"
+              onClick={handleLogoutClick}
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
+              title="Keluar / Ganti Akun & Portal"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-300 shrink-0" />
+              <span className="hidden sm:inline">Keluar</span>
+            </button>
+
+            {/* Mobile Tools Menu Toggle */}
+            {currentUser.role === 'super_admin' && (
+              <button
+                id="btn-mobile-tools-toggle"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-amber-300 transition-colors"
+                title="Buka Menu Pengaturan & Alat"
+              >
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Mobile Dropdown Tools for Super Admin */}
+        {mobileMenuOpen && currentUser.role === 'super_admin' && (
+          <div className="sm:hidden py-2.5 px-2 mb-2 bg-black/40 rounded-2xl border border-white/20 space-y-1.5 animate-in fade-in slide-in-from-top-2 text-xs">
+            <div className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider px-2 pt-1 pb-0.5">
+              Alat Super Admin
+            </div>
+            {onOpenUserManager && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenUserManager();
+                }}
+                className="w-full text-left flex items-center gap-2 p-2 rounded-xl bg-amber-500/20 text-amber-200 font-bold border border-amber-400/30"
+              >
+                <IdCard className="w-4 h-4 text-amber-300" />
+                <span>Kelola Akun Guru & NIY</span>
+              </button>
+            )}
+            {onOpenGoogleDbModal && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenGoogleDbModal();
+                }}
+                className="w-full text-left flex items-center gap-2 p-2 rounded-xl bg-emerald-500/20 text-emerald-200 font-bold border border-emerald-400/30"
+              >
+                <Database className="w-4 h-4 text-emerald-300" />
+                <span>Google Drive & Sheets DB</span>
+              </button>
+            )}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenSettingsModal();
+                }}
+                className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold"
+              >
+                <Settings className="w-3.5 h-3.5 text-amber-300" />
+                <span>Pengaturan</span>
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenBackupModal();
+                }}
+                className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold"
+              >
+                <Database className="w-3.5 h-3.5 text-amber-300" />
+                <span>Backup Data</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Mobile / Tablet Navigation bar */}
-        <div className="lg:hidden flex items-center justify-around py-2 border-t border-white/10 text-xs font-semibold gap-1">
+        <div className="md:hidden flex items-center justify-around py-2 border-t border-white/10 text-xs font-semibold gap-1">
           {currentUser.role === 'super_admin' && (
             <button
               onClick={() => onNavigate('dashboard')}
@@ -323,7 +411,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Search className="w-4 h-4" />
-            <span className="text-[10px]">Wali</span>
+            <span className="text-[10px]">Wali Santri</span>
           </button>
         </div>
       </div>

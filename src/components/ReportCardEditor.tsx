@@ -25,6 +25,7 @@ import {
   BookOpen,
   Scroll,
   HelpCircle,
+  LogOut,
 } from 'lucide-react';
 
 interface ReportCardEditorProps {
@@ -35,6 +36,7 @@ interface ReportCardEditorProps {
   initialReport: StudentReport;
   settings: SchoolSettings;
   onSaveReport: (report: StudentReport) => void;
+  onLogout?: () => void;
 }
 
 export const ReportCardEditor: React.FC<ReportCardEditorProps> = ({
@@ -45,6 +47,7 @@ export const ReportCardEditor: React.FC<ReportCardEditorProps> = ({
   initialReport,
   settings,
   onSaveReport,
+  onLogout,
 }) => {
   const [report, setReport] = useState<StudentReport>(initialReport);
   const [hasChanges, setHasChanges] = useState(false);
@@ -346,6 +349,18 @@ export const ReportCardEditor: React.FC<ReportCardEditorProps> = ({
               <Printer className="w-4 h-4" />
               <span>Print</span>
             </button>
+
+            {onLogout && (
+              <button
+                id="btn-logout-editor"
+                onClick={onLogout}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-700 hover:text-rose-800 border border-rose-300 rounded-xl transition-all shadow-xs active:scale-95"
+                title="Keluar / Ganti Akun & Portal"
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span className="hidden sm:inline">Keluar</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

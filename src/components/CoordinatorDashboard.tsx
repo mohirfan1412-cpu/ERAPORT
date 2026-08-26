@@ -26,6 +26,7 @@ import {
   Folder,
   ArrowRight,
   ExternalLink,
+  LogOut,
 } from 'lucide-react';
 
 interface CoordinatorDashboardProps {
@@ -40,6 +41,7 @@ interface CoordinatorDashboardProps {
   onOpenBackupModal: () => void;
   onOpenGoogleDbModal?: () => void;
   onOpenUserManager?: () => void;
+  onLogout?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
 }
@@ -56,6 +58,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   onOpenBackupModal,
   onOpenGoogleDbModal,
   onOpenUserManager,
+  onLogout,
   isGoogleConnected = false,
   googleDbState,
 }) => {
@@ -185,6 +188,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
               <Database className="w-4 h-4 text-blue-950" />
               <span>Backup & Restore Data</span>
             </button>
+
+            {onLogout && (
+              <button
+                id="btn-logout-dashboard"
+                onClick={onLogout}
+                className="flex items-center gap-2 text-xs font-bold bg-rose-500/25 hover:bg-rose-500/35 text-rose-200 px-4 py-2.5 rounded-2xl border border-rose-400/40 backdrop-blur-xl transition-all active:scale-95 shadow-md shadow-rose-950/20"
+                title="Keluar dari Dashboard / Ganti Akun"
+              >
+                <LogOut className="w-4 h-4 text-rose-300" />
+                <span>Keluar</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

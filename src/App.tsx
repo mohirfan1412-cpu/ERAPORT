@@ -109,6 +109,11 @@ export default function App() {
     }
   };
 
+  // Logout / Switch portal handler
+  const handleLogout = () => {
+    setIsAuthOpen(true);
+  };
+
   // Reload data after backup or Google Sheets sync
   const handleDataRestored = () => {
     setSettings(Storage.getSettings());
@@ -195,6 +200,7 @@ export default function App() {
         onOpenBackupModal={() => setIsBackupOpen(true)}
         onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
         onOpenUserManager={() => setIsUserManagerOpen(true)}
+        onLogout={handleLogout}
         isGoogleConnected={googleDbState.isConnected}
         googleDbState={googleDbState}
       />
@@ -214,6 +220,7 @@ export default function App() {
             onOpenBackupModal={() => setIsBackupOpen(true)}
             onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
             onOpenUserManager={() => setIsUserManagerOpen(true)}
+            onLogout={handleLogout}
             isGoogleConnected={googleDbState.isConnected}
             googleDbState={googleDbState}
           />
@@ -228,6 +235,7 @@ export default function App() {
             initialReport={activeReport}
             settings={settings}
             onSaveReport={handleSaveReport}
+            onLogout={handleLogout}
           />
         )}
 
@@ -256,6 +264,7 @@ export default function App() {
             classes={classes}
             reports={reports}
             settings={settings}
+            onLogout={handleLogout}
           />
         )}
       </main>
