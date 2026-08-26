@@ -2,12 +2,16 @@ export type UserRole = 'super_admin' | 'coordinator' | 'teacher' | 'parent';
 
 export interface UserAccount {
   id: string;
+  username: string;
   name: string;
-  email: string;
+  niy: string; // Nomor Induk Yayasan (NIY)
+  nip?: string; // alias/fallback
   role: UserRole;
   password?: string;
   assignedClassIds?: string[];
-  nip?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
 }
 
 export interface Student {

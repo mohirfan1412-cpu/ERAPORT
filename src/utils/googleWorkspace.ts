@@ -500,14 +500,16 @@ export const syncLocalToGoogleSheets = async (
 
   // 5. Pengguna Table Data
   const penggunaValues = [
-    ['ID Pengguna', 'Nama Lengkap', 'Email Akun', 'Peran Akun', 'NIP', 'Kelas Yang Diampu'],
+    ['ID Pengguna', 'Username', 'Nama Lengkap', 'NIY (Nomor Induk Yayasan)', 'Peran Akun', 'Password / Kunci', 'Kelas Yang Diampu', 'Email / Kontak'],
     ...users.map((u) => [
       u.id,
+      u.username || '',
       u.name,
-      u.email,
+      u.niy || u.nip || '',
       u.role,
-      u.nip || '',
+      u.password || '',
       (u.assignedClassIds || []).join(', '),
+      u.email || u.phone || '',
     ]),
   ];
 
@@ -517,7 +519,7 @@ export const syncLocalToGoogleSheets = async (
     { range: `${SHEET_NAMES.KELAS}!A1:F${Math.max(kelasValues.length + 5, 20)}`, values: kelasValues },
     { range: `${SHEET_NAMES.RAPORT}!A1:U${Math.max(raportValues.length + 5, 50)}`, values: raportValues },
     { range: `${SHEET_NAMES.PENGATURAN}!A1:B${pengaturanValues.length + 5}`, values: pengaturanValues },
-    { range: `${SHEET_NAMES.PENGGUNA}!A1:F${Math.max(penggunaValues.length + 5, 20)}`, values: penggunaValues },
+    { range: `${SHEET_NAMES.PENGGUNA}!A1:H${Math.max(penggunaValues.length + 5, 20)}`, values: penggunaValues },
   ];
 
   // Clear existing ranges first for clean updates
@@ -590,7 +592,7 @@ export const pullDataFromGoogleSheets = async (
     `${SHEET_NAMES.KELAS}!A2:F200`,
     `${SHEET_NAMES.RAPORT}!A2:U1000`,
     `${SHEET_NAMES.PENGATURAN}!A2:B20`,
-    `${SHEET_NAMES.PENGGUNA}!A2:F100`,
+    `${SHEET_NAMES.PENGGUNA}!A2:H100`,
   ];
 
   const res = await fetch(
@@ -678,15 +680,34 @@ export const pullDataFromGoogleSheets = async (
   // Parse Users
   const userRows = valueRanges[4]?.values || [];
   const parsedUsers: UserAccount[] = userRows
-    .filter((r: any[]) => r && r[0] && r[1])
-    .map((r: any[]) => ({
-      id: r[0],
-      name: r[1] || '',
-      email: r[2] || '',
-      role: (r[3] as any) || 'teacher',
-      nip: r[4] || '',
-      assignedClassIds: r[5] ? r[5].split(',').map((s: string) => s.trim()) : [],
-    }));
+    .filter((r: any[]) => r && r[0] && (r[1] || r[2]))
+    .map((r: any[], idx: number) => {
+      // Check if row follows new schema (8 cols) or old schema (6 cols)
+      const isNewSchema = r.length >= 7;
+      if (isNewSchema) {
+        return {
+          id: r[0],
+          username: r[1] || `user_${r[0]}`,
+          name: r[2] || '',
+          niy: r[3] || '',
+          role: (r[4] as any) || 'teacher',
+          password: r[5] || '',
+          assignedClassIds: r[6] ? r[6].split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+          email: r[7] || '',
+        };
+      } else {
+        // Fallback old schema
+        return {
+          id: r[0],
+          username: `user_${r[0] || idx + 1}`,
+          name: r[1] || '',
+          email: r[2] || '',
+          role: (r[3] as any) || 'teacher',
+          niy: r[4] || '',
+          assignedClassIds: r[5] ? r[5].split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        };
+      }
+    });
 
   return {
     students: parsedStudents.length > 0 ? parsedStudents : Storage.getStudents(),

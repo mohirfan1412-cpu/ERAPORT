@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Eye,
   Edit,
+  IdCard,
   Building,
   Calendar,
   Layers,
@@ -33,10 +34,12 @@ interface CoordinatorDashboardProps {
   reports: StudentReport[];
   settings: SchoolSettings;
   users: UserAccount[];
+  currentUser?: UserAccount;
   onOpenStudentEditor: (studentId: string) => void;
   onOpenSettingsModal: () => void;
   onOpenBackupModal: () => void;
   onOpenGoogleDbModal?: () => void;
+  onOpenUserManager?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
 }
@@ -47,10 +50,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   reports,
   settings,
   users,
+  currentUser,
   onOpenStudentEditor,
   onOpenSettingsModal,
   onOpenBackupModal,
   onOpenGoogleDbModal,
+  onOpenUserManager,
   isGoogleConnected = false,
   googleDbState,
 }) => {
@@ -140,6 +145,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {onOpenUserManager && (
+              <button
+                id="btn-open-user-manager"
+                onClick={onOpenUserManager}
+                className="flex items-center gap-2 text-xs font-bold bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 px-4 py-2.5 rounded-2xl border border-amber-400/40 backdrop-blur-xl transition-all active:scale-95 shadow-md shadow-blue-950/20"
+                title="Kelola Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin Bebas"
+              >
+                <IdCard className="w-4 h-4 text-amber-300" />
+                <span>Kelola Akun & NIY</span>
+              </button>
+            )}
+
             {onOpenGoogleDbModal && (
               <button
                 id="btn-open-google-db"

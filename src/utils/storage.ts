@@ -22,30 +22,50 @@ export const DEFAULT_SETTINGS: SchoolSettings = {
 
 export const DEFAULT_USERS: UserAccount[] = [
   {
-    id: 'user-admin',
-    name: 'Koordinator Al-Qur\'an',
-    email: 'koordinator@sekolah.sch.id',
+    id: 'user-super-admin',
+    username: 'superadmin',
+    name: 'Super Admin Utama',
+    niy: 'NIY. 20240001',
+    email: 'superadmin@sekolah.sch.id',
     role: 'super_admin',
     password: 'admin',
-    nip: '198507122010011005',
+    phone: '081234567800',
+    notes: 'Akses penuh pengelola sistem (kredensial bebas disesuaikan)',
+  },
+  {
+    id: 'user-admin',
+    username: 'admin.quran',
+    name: 'Ustadz Ahmad Fauzi, Al-Hafidz',
+    niy: 'NIY. 20240101',
+    email: 'koordinator@sekolah.sch.id',
+    role: 'coordinator',
+    password: 'admin',
+    phone: '081234567801',
+    notes: 'Koordinator Al-Qur’an & Tahfidz',
   },
   {
     id: 'user-teacher-1',
+    username: 'mujiono',
     name: 'M. Mujiono, S.Pd',
+    niy: 'NIY. 20240201',
     email: 'mujiono@sekolah.sch.id',
     role: 'teacher',
     password: 'guru',
     assignedClassIds: ['class-ix-a', 'class-ix-b'],
-    nip: '199003152015021008',
+    phone: '081234567802',
+    notes: 'Guru Halaqah IX A & IX B',
   },
   {
     id: 'user-teacher-2',
+    username: 'nurul',
     name: 'Ustadzah Nurul Hidayah, S.Pd.I',
+    niy: 'NIY. 20240202',
     email: 'nurul@sekolah.sch.id',
     role: 'teacher',
     password: 'guru',
     assignedClassIds: ['class-viii-a'],
-    nip: '199308202018032004',
+    phone: '081234567803',
+    notes: 'Guru Halaqah VIII A',
   },
 ];
 
@@ -433,15 +453,59 @@ export const Storage = {
 
   getUsers: (): UserAccount[] => {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
-    return data ? JSON.parse(data) : DEFAULT_USERS;
+    if (!data) return DEFAULT_USERS;
+    try {
+      const parsed: UserAccount[] = JSON.parse(data);
+      // Migrate missing username or niy if present
+      return parsed.map((u, idx) => {
+        const defaultMatch = DEFAULT_USERS.find((du) => du.id === u.id || du.name === u.name);
+        return {
+          ...u,
+          username: u.username || defaultMatch?.username || `user_${u.id || idx + 1}`,
+          niy: u.niy || (u as any).nip || defaultMatch?.niy || `NIY. 20240${idx + 1}`,
+        };
+      });
+    } catch {
+      return DEFAULT_USERS;
+    }
   },
   saveUsers: (users: UserAccount[]) => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
   },
+  saveOrUpdateUser: (user: UserAccount) => {
+    const users = Storage.getUsers();
+    const idx = users.findIndex((u) => u.id === user.id);
+    if (idx >= 0) {
+      users[idx] = { ...users[idx], ...user };
+    } else {
+      users.push(user);
+    }
+    Storage.saveUsers(users);
+    // If updating currently logged in user, refresh current user too
+    const current = Storage.getCurrentUser();
+    if (current.id === user.id) {
+      Storage.setCurrentUser(user);
+    }
+  },
+  deleteUser: (userId: string) => {
+    const users = Storage.getUsers().filter((u) => u.id !== userId);
+    Storage.saveUsers(users);
+  },
 
   getCurrentUser: (): UserAccount => {
     const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return data ? JSON.parse(data) : DEFAULT_USERS[0];
+    if (!data) return DEFAULT_USERS[0];
+    try {
+      const u: UserAccount = JSON.parse(data);
+      const defaultMatch = DEFAULT_USERS.find((du) => du.id === u.id || du.name === u.name);
+      return {
+        ...u,
+        username: u.username || defaultMatch?.username || 'admin',
+        niy: u.niy || (u as any).nip || defaultMatch?.niy || 'NIY. 20240001',
+      };
+    } catch {
+      return DEFAULT_USERS[0];
+    }
   },
   setCurrentUser: (user: UserAccount) => {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));

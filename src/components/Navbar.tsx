@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   GraduationCap,
   Search,
+  IdCard,
   Settings,
   Database,
   Sparkles,
@@ -24,6 +25,7 @@ interface NavbarProps {
   onOpenSettingsModal: () => void;
   onOpenBackupModal: () => void;
   onOpenGoogleDbModal?: () => void;
+  onOpenUserManager?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
 }
@@ -37,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettingsModal,
   onOpenBackupModal,
   onOpenGoogleDbModal,
+  onOpenUserManager,
   isGoogleConnected = false,
   googleDbState,
 }) => {
@@ -177,6 +180,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </span>
                   </button>
                 )}
+                {currentUser.role === 'super_admin' && onOpenUserManager && (
+                  <button
+                    id="nav-superadmin-user-manager"
+                    onClick={onOpenUserManager}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
+                    title="Panel Manajemen Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin"
+                  >
+                    <IdCard className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span className="hidden sm:inline">Kelola Akun & NIY</span>
+                  </button>
+                )}
                 <button
                   id="nav-quick-settings"
                   onClick={onOpenSettingsModal}
@@ -210,6 +224,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="btn-user-role-badge"
               onClick={onOpenAuthModal}
               className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-3 py-1.5 rounded-2xl transition-all text-left backdrop-blur-xl group shadow-sm active:scale-95"
+              title="Klik untuk Masuk / Ganti Portal Akun & NIY"
             >
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-blue-950 flex items-center justify-center font-bold text-xs shadow-md shadow-amber-400/20 group-hover:rotate-6 transition-transform">
                 {currentUser.role === 'super_admin' ? (
@@ -224,12 +239,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="text-xs font-bold leading-tight text-white group-hover:text-amber-200 transition-colors truncate max-w-[130px]">
                   {currentUser.name}
                 </div>
-                <div className="text-[10px] text-amber-300/90 uppercase font-extrabold tracking-wider">
-                  {currentUser.role === 'super_admin'
-                    ? 'Koordinator'
-                    : currentUser.role === 'parent'
-                    ? 'Wali Santri'
-                    : 'Guru Pengajar'}
+                <div className="text-[10px] text-amber-300/90 font-extrabold tracking-wider flex items-center gap-1">
+                  <span className="uppercase">
+                    {currentUser.role === 'super_admin'
+                      ? 'Super Admin'
+                      : currentUser.role === 'coordinator'
+                      ? 'Admin Khusus'
+                      : currentUser.role === 'parent'
+                      ? 'Wali Santri'
+                      : 'Guru Khusus'}
+                  </span>
+                  {currentUser.niy && currentUser.niy !== '-' && (
+                    <span className="opacity-75 font-mono text-[9px]">({currentUser.niy})</span>
+                  )}
                 </div>
               </div>
             </button>

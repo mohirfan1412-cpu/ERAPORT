@@ -10,6 +10,7 @@ import { ParentPortal } from './components/ParentPortal';
 import { SettingsModal } from './components/SettingsModal';
 import { BackupModal } from './components/BackupModal';
 import { AuthModal } from './components/AuthModal';
+import { UserManagerModal } from './components/UserManagerModal';
 import { GoogleDatabaseModal } from './components/GoogleDatabaseModal';
 import { getSavedGoogleDatabaseState, initGoogleAuth, getCachedAccessToken, triggerAutoSyncToGoogleSheets } from './utils/googleWorkspace';
 import { CheckCircle, RefreshCw } from 'lucide-react';
@@ -49,6 +50,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
   const [isGoogleDbOpen, setIsGoogleDbOpen] = useState(false);
 
   // Initialize Google Auth listener
@@ -140,6 +142,12 @@ export default function App() {
     triggerSync(undefined, newClasses);
   };
 
+  // Update users
+  const handleUpdateUsers = (newUsers: UserAccount[]) => {
+    setUsers(newUsers);
+    triggerSync(undefined, undefined, undefined, undefined, newUsers);
+  };
+
   // Update settings
   const handleSaveSettings = (newSettings: SchoolSettings) => {
     setSettings(newSettings);
@@ -152,8 +160,15 @@ export default function App() {
     setActiveView('editor');
   };
 
+  // Filter students if current user is a teacher with assigned classes
+  const visibleStudents =
+    currentUser.role === 'teacher' && currentUser.assignedClassIds && currentUser.assignedClassIds.length > 0
+      ? students.filter((s) => currentUser.assignedClassIds?.includes(s.classId))
+      : students;
+
   // Selected student & report
-  const activeStudent = students.find((s) => s.id === selectedStudentId) || students[0];
+  const activeStudent =
+    visibleStudents.find((s) => s.id === selectedStudentId) || visibleStudents[0] || students[0];
   const activeClass = activeStudent ? classes.find((c) => c.id === activeStudent.classId) : undefined;
   let activeReport = activeStudent ? reports.find((r) => r.studentId === activeStudent.id) : undefined;
 
@@ -179,6 +194,7 @@ export default function App() {
         onOpenSettingsModal={() => setIsSettingsOpen(true)}
         onOpenBackupModal={() => setIsBackupOpen(true)}
         onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
+        onOpenUserManager={() => setIsUserManagerOpen(true)}
         isGoogleConnected={googleDbState.isConnected}
         googleDbState={googleDbState}
       />
@@ -192,10 +208,12 @@ export default function App() {
             reports={reports}
             settings={settings}
             users={users}
+            currentUser={currentUser}
             onOpenStudentEditor={handleOpenStudentEditor}
             onOpenSettingsModal={() => setIsSettingsOpen(true)}
             onOpenBackupModal={() => setIsBackupOpen(true)}
             onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
+            onOpenUserManager={() => setIsUserManagerOpen(true)}
             isGoogleConnected={googleDbState.isConnected}
             googleDbState={googleDbState}
           />
@@ -203,7 +221,7 @@ export default function App() {
 
         {activeView === 'editor' && activeStudent && activeReport && (
           <ReportCardEditor
-            students={students}
+            students={visibleStudents}
             currentStudentId={activeStudent.id}
             onSelectStudent={setSelectedStudentId}
             classroom={activeClass}
@@ -270,6 +288,17 @@ export default function App() {
         onClose={() => setIsAuthOpen(false)}
         currentUser={currentUser}
         users={users}
+        students={students}
+        onSelectUser={handleSelectUser}
+      />
+
+      <UserManagerModal
+        isOpen={isUserManagerOpen}
+        onClose={() => setIsUserManagerOpen(false)}
+        users={users}
+        classes={classes}
+        currentUser={currentUser}
+        onUpdateUsers={handleUpdateUsers}
         onSelectUser={handleSelectUser}
       />
 
