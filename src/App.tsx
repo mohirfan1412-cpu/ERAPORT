@@ -49,7 +49,7 @@ export default function App() {
   // Modal States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(true); // Langsung diarahkan ke portal login saat pertama masuk
   const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
   const [isGoogleDbOpen, setIsGoogleDbOpen] = useState(false);
 
@@ -195,6 +195,7 @@ export default function App() {
         activeView={activeView}
         onNavigate={setActiveView}
         settings={settings}
+        users={users}
         onOpenAuthModal={() => setIsAuthOpen(true)}
         onOpenSettingsModal={() => setIsSettingsOpen(true)}
         onOpenBackupModal={() => setIsBackupOpen(true)}

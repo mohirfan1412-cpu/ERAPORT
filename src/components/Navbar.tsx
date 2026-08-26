@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { UserAccount, SchoolSettings, GoogleWorkspaceDatabaseState } from '../types';
 import {
   BookOpen,
@@ -13,8 +13,6 @@ import {
   Settings,
   Database,
   LogOut,
-  Menu,
-  X,
   Sparkles,
 } from 'lucide-react';
 
@@ -23,6 +21,7 @@ interface NavbarProps {
   activeView: 'dashboard' | 'editor' | 'students' | 'classes' | 'parent';
   onNavigate: (view: 'dashboard' | 'editor' | 'students' | 'classes' | 'parent') => void;
   settings: SchoolSettings;
+  users?: UserAccount[];
   onOpenAuthModal: () => void;
   onOpenSettingsModal: () => void;
   onOpenBackupModal: () => void;
@@ -38,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeView,
   onNavigate,
   settings,
+  users = [],
   onOpenAuthModal,
   onOpenSettingsModal,
   onOpenBackupModal,
@@ -47,8 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   isGoogleConnected = false,
   googleDbState,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   const handleLogoutClick = () => {
     if (onLogout) {
       onLogout();
@@ -57,26 +55,29 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const isSuperAdmin = currentUser.role === 'super_admin';
+  const isCoordinator = currentUser.role === 'coordinator';
+
   return (
     <header className="bg-gradient-to-r from-[#07193b] via-[#0c245c] to-[#0b1c48] text-white sticky top-0 z-30 border-b border-white/15 shadow-xl shadow-blue-950/25">
       <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-6">
         {/* Main Navbar Row */}
-        <div className="flex items-center justify-between min-h-[60px] sm:h-16 py-2 sm:py-0 gap-2 sm:gap-4">
+        <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
           {/* Left: Brand / Logo */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 text-blue-950 flex items-center justify-center font-bold shadow-lg shadow-amber-400/25 border border-amber-200/50">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 text-blue-950 flex items-center justify-center font-bold shadow-lg shadow-amber-400/25 border border-amber-200/50 shrink-0">
               <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-blue-950" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="font-extrabold text-xs sm:text-sm lg:text-base tracking-tight bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent">
+                <span className="font-extrabold text-xs sm:text-sm lg:text-base tracking-tight bg-gradient-to-r from-white via-blue-50 to-blue-100 bg-clip-text text-transparent truncate">
                   E-Raport Al-Qur'an
                 </span>
                 <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-blue-950 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full uppercase shadow-xs tracking-wider shrink-0">
                   UMMI
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-blue-200/80 hidden md:flex items-center gap-1.5 truncate max-w-[240px] lg:max-w-none">
+              <p className="text-[10px] sm:text-[11px] text-blue-200/80 hidden md:flex items-center gap-1.5 truncate max-w-[220px] lg:max-w-none">
                 <span className="font-medium truncate">{settings.schoolName || 'Lembaga Pendidikan Al-Qur’an'}</span>
                 <span className="opacity-40">•</span>
                 <span className="shrink-0">Smst. {settings.semester} TP {settings.academicYear}</span>
@@ -86,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Center: Main Navigation Tabs (Desktop / Tablet) */}
           <nav className="hidden md:flex items-center gap-1 bg-black/25 backdrop-blur-xl p-1 rounded-2xl border border-white/15 text-xs font-semibold shadow-inner">
-            {currentUser.role === 'super_admin' && (
+            {(isSuperAdmin || isCoordinator) && (
               <button
                 id="nav-dashboard"
                 onClick={() => onNavigate('dashboard')}
@@ -98,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="Dashboard Koordinator"
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Dashboard</span>
+                <span>Dashboard</span>
               </button>
             )}
 
@@ -116,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Input Nilai</span>
             </button>
 
-            {currentUser.role === 'super_admin' && (
+            {isSuperAdmin && (
               <>
                 <button
                   id="nav-students"
@@ -163,81 +164,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Right: Quick Tools, Role Button, & Logout Button */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Quick Tools for Super Admin (Desktop/Tablet) */}
-            {currentUser.role === 'super_admin' && (
-              <div className="hidden sm:flex items-center gap-1 bg-black/20 backdrop-blur-md p-1 rounded-xl border border-white/10">
-                {onOpenGoogleDbModal && (
-                  <button
-                    id="nav-google-database"
-                    onClick={onOpenGoogleDbModal}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
-                      googleDbState?.isMigrated && isGoogleConnected
-                        ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 hover:bg-emerald-500/35'
-                        : isGoogleConnected
-                        ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 hover:bg-amber-500/35 animate-pulse'
-                        : 'bg-white/10 text-blue-100 hover:text-white hover:bg-white/20 border border-white/20'
-                    }`}
-                    title="Database Google Sheets & Google Drive"
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${
-                        googleDbState?.isMigrated && isGoogleConnected
-                          ? 'bg-emerald-400 animate-pulse'
-                          : isGoogleConnected
-                          ? 'bg-amber-400 animate-bounce'
-                          : 'bg-slate-400'
-                      }`}
-                    />
-                    <Database className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden xl:inline font-bold">
-                      {googleDbState?.isMigrated && isGoogleConnected ? 'Sheets DB' : 'Google DB'}
-                    </span>
-                  </button>
-                )}
-
-                {onOpenUserManager && (
-                  <button
-                    id="nav-superadmin-user-manager"
-                    onClick={onOpenUserManager}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
-                    title="Manajemen Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin"
-                  >
-                    <IdCard className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span className="hidden xl:inline">Kelola Akun</span>
-                  </button>
-                )}
-
-                <button
-                  id="nav-quick-settings"
-                  onClick={onOpenSettingsModal}
-                  className="p-1.5 rounded-lg text-blue-200 hover:text-amber-300 hover:bg-white/10 transition-all"
-                  title="Pengaturan Lembaga & Raport"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-
-                <button
-                  id="nav-quick-backup"
-                  onClick={onOpenBackupModal}
-                  className="p-1.5 rounded-lg text-blue-200 hover:text-amber-300 hover:bg-white/10 transition-all"
-                  title="Backup & Restore Data"
-                >
-                  <Database className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            {/* User Profile Badge (Clickable to view/switch profile) */}
+          {/* Right: User Profile & Logout Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* User Profile Badge (Clickable) */}
             <button
               id="btn-user-role-badge"
               onClick={onOpenAuthModal}
-              className="flex items-center gap-1.5 sm:gap-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-2 sm:px-2.5 py-1.5 rounded-xl sm:rounded-2xl transition-all text-left backdrop-blur-xl group shadow-sm active:scale-95"
-              title="Profil Pengguna & Portal Masuk"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-2.5 py-1.5 rounded-xl sm:rounded-2xl transition-all text-left backdrop-blur-xl group shadow-xs active:scale-95"
+              title="Profil Pengguna & Ganti Akun"
             >
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-blue-950 flex items-center justify-center font-bold text-xs shadow-md shadow-amber-400/20 shrink-0">
-                {currentUser.role === 'super_admin' ? (
+                {isSuperAdmin ? (
                   <ShieldCheck className="w-4 h-4" />
                 ) : currentUser.role === 'parent' ? (
                   <Users className="w-4 h-4" />
@@ -246,18 +183,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
               <div className="hidden sm:block">
-                <div className="text-xs font-bold leading-tight text-white group-hover:text-amber-200 transition-colors truncate max-w-[90px] md:max-w-[120px]">
+                <div className="text-xs font-bold leading-tight text-white group-hover:text-amber-200 transition-colors truncate max-w-[100px] md:max-w-[130px]">
                   {currentUser.name}
                 </div>
                 <div className="text-[9px] md:text-[10px] text-amber-300/90 font-extrabold tracking-wider flex items-center gap-1">
                   <span className="uppercase">
-                    {currentUser.role === 'super_admin'
+                    {isSuperAdmin
                       ? 'Super Admin'
-                      : currentUser.role === 'coordinator'
-                      ? 'Admin'
+                      : isCoordinator
+                      ? 'Admin Khusus'
                       : currentUser.role === 'parent'
-                      ? 'Wali'
-                      : 'Guru'}
+                      ? 'Wali Santri'
+                      : 'Guru Khusus'}
                   </span>
                   {currentUser.niy && currentUser.niy !== '-' && (
                     <span className="opacity-75 font-mono text-[9px] hidden lg:inline">({currentUser.niy})</span>
@@ -270,85 +207,100 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-navbar-logout"
               onClick={handleLogoutClick}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
-              title="Keluar / Ganti Akun & Portal"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
+              title="Keluar / Buka Portal Login"
             >
               <LogOut className="w-3.5 h-3.5 text-rose-300 shrink-0" />
-              <span className="hidden sm:inline">Keluar</span>
+              <span>Keluar</span>
             </button>
-
-            {/* Mobile Tools Menu Toggle */}
-            {currentUser.role === 'super_admin' && (
-              <button
-                id="btn-mobile-tools-toggle"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="sm:hidden p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-amber-300 transition-colors"
-                title="Buka Menu Pengaturan & Alat"
-              >
-                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Mobile Dropdown Tools for Super Admin */}
-        {mobileMenuOpen && currentUser.role === 'super_admin' && (
-          <div className="sm:hidden py-2.5 px-2 mb-2 bg-black/40 rounded-2xl border border-white/20 space-y-1.5 animate-in fade-in slide-in-from-top-2 text-xs">
-            <div className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider px-2 pt-1 pb-0.5">
-              Alat Super Admin
+        {/* Super Admin Dedicated Action Sub-Bar (Moved down so it NEVER gets cut off or clipped) */}
+        {isSuperAdmin && (
+          <div className="py-2.5 border-t border-white/10 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 shrink-0 text-amber-300/90 text-xs font-bold mr-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
+              <span className="hidden sm:inline uppercase tracking-wider text-[11px]">Panel Super Admin:</span>
             </div>
-            {onOpenUserManager && (
+
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {onOpenUserManager && (
+                <button
+                  id="subnav-superadmin-user-manager"
+                  onClick={onOpenUserManager}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-100 bg-amber-500/25 hover:bg-amber-500/35 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0"
+                  title="Kelola Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin"
+                >
+                  <IdCard className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Kelola Akun & NIY</span>
+                  {users.length > 0 && (
+                    <span className="bg-amber-400 text-blue-950 text-[10px] font-black px-1.5 py-0.2 rounded-full hidden sm:inline-block">
+                      {users.length}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {onOpenGoogleDbModal && (
+                <button
+                  id="subnav-google-database"
+                  onClick={onOpenGoogleDbModal}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 ${
+                    googleDbState?.isMigrated && isGoogleConnected
+                      ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 hover:bg-emerald-500/35'
+                      : isGoogleConnected
+                      ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 hover:bg-amber-500/35 animate-pulse'
+                      : 'bg-white/10 text-blue-100 hover:text-white hover:bg-white/20 border border-white/20'
+                  }`}
+                  title="Database Cloud Google Sheets & Google Drive"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      googleDbState?.isMigrated && isGoogleConnected
+                        ? 'bg-emerald-400 animate-pulse'
+                        : isGoogleConnected
+                        ? 'bg-amber-400 animate-bounce'
+                        : 'bg-slate-400'
+                    }`}
+                  />
+                  <Database className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {googleDbState?.isMigrated && isGoogleConnected
+                      ? 'Google Sheets DB (Tersinkron)'
+                      : isGoogleConnected
+                      ? 'Google Drive (Migrasi DB)'
+                      : 'Google DB & Sheets'}
+                  </span>
+                </button>
+              )}
+
               <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenUserManager();
-                }}
-                className="w-full text-left flex items-center gap-2 p-2 rounded-xl bg-amber-500/20 text-amber-200 font-bold border border-amber-400/30"
+                id="subnav-quick-settings"
+                onClick={onOpenSettingsModal}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all shadow-xs active:scale-95 shrink-0"
+                title="Pengaturan Lembaga & Raport"
               >
-                <IdCard className="w-4 h-4 text-amber-300" />
-                <span>Kelola Akun Guru & NIY</span>
+                <Settings className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span className="hidden sm:inline">Pengaturan</span>
               </button>
-            )}
-            {onOpenGoogleDbModal && (
+
               <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenGoogleDbModal();
-                }}
-                className="w-full text-left flex items-center gap-2 p-2 rounded-xl bg-emerald-500/20 text-emerald-200 font-bold border border-emerald-400/30"
+                id="subnav-quick-backup"
+                onClick={onOpenBackupModal}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all shadow-xs active:scale-95 shrink-0"
+                title="Backup & Restore Data JSON"
               >
-                <Database className="w-4 h-4 text-emerald-300" />
-                <span>Google Drive & Sheets DB</span>
-              </button>
-            )}
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenSettingsModal();
-                }}
-                className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold"
-              >
-                <Settings className="w-3.5 h-3.5 text-amber-300" />
-                <span>Pengaturan</span>
-              </button>
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenBackupModal();
-                }}
-                className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold"
-              >
-                <Database className="w-3.5 h-3.5 text-amber-300" />
-                <span>Backup Data</span>
+                <Database className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                <span className="hidden sm:inline">Backup Data</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* Mobile / Tablet Navigation bar */}
+        {/* Mobile / Tablet Navigation bar (Bottom tabs) */}
         <div className="md:hidden flex items-center justify-around py-2 border-t border-white/10 text-xs font-semibold gap-1">
-          {currentUser.role === 'super_admin' && (
+          {(isSuperAdmin || isCoordinator) && (
             <button
               onClick={() => onNavigate('dashboard')}
               className={`p-2 rounded-xl flex flex-col items-center gap-1 transition-all ${
@@ -374,7 +326,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="text-[10px]">Input Nilai</span>
           </button>
 
-          {currentUser.role === 'super_admin' && (
+          {isSuperAdmin && (
             <>
               <button
                 onClick={() => onNavigate('students')}
