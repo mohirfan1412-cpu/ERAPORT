@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --frosted-bg: radial-gradient(at 0% 0%, #e6fffa 0%, #f0f9f6 50%, #fef3c7 100%);
+}
+
+body {
+  min-height: 100vh;
+  background: radial-gradient(at 0% 0%, #e6fffa 0%, #f0f9f6 50%, #fef3c7 100%);
+  background-attachment: fixed;
+  color: #1e293b;
+}
+
+@media print {
+  @page {
+    size: 215mm 330mm portrait; /* Standar Ukuran Kertas F4 / Folio (21.5 cm x 33.0 cm) */
+    margin: 8mm 8mm 8mm 8mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  header, nav, button, .no-print, input[type="file"], select, .hidden-print {
+    display: none !important;
+  }
+
+  #editor-preview-card, #official-report-card, #parent-report-card, #export-hidden-report-card {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+

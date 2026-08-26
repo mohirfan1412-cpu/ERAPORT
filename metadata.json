@@ -1,0 +1,6 @@
+{
+  "name": "E-Raport Al-Qur'an UMMI & Tahfidz",
+  "description": "Aplikasi Raport Al-Qur'an Metode UMMI dan Tahfidz dengan format standar resmi, integrasi database Google Spreadsheets & Google Drive, input nilai guru, dashboard koordinator, dan ekspor PDF & Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
