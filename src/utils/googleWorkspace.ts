@@ -87,29 +87,111 @@ export const initGoogleAuth = (
       if (cachedAccessToken) {
         if (onSuccess) onSuccess(profile, cachedAccessToken);
       } else if (!isSigningIn) {
-        // If user is logged in to Firebase but token is not in memory, user may need to re-authorize
         if (onSignedOut) onSignedOut();
       }
-    } else {
-      cachedAccessToken = null;
+    } else if (!cachedAccessToken) {
       saveGoogleDatabaseState({ isConnected: false });
       if (onSignedOut) onSignedOut();
     }
   });
 };
 
-// Sign in with Google Popup
+// Google Identity Services (GIS) Token Client flow
+const requestGisToken = (clientId: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !(window as any).google?.accounts?.oauth2) {
+      return reject(new Error('Google Identity Services belum termuat. Silakan tunggu atau muat ulang halaman.'));
+    }
+
+    try {
+      const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file email profile openid',
+        prompt: 'consent',
+        callback: (resp: any) => {
+          if (resp.error) {
+            return reject(new Error(resp.error_description || resp.error || 'Izin Google Workspace dibatalkan atau ditolak'));
+          }
+          if (!resp.access_token) {
+            return reject(new Error('Gagal mendapatkan Access Token dari Google.'));
+          }
+          resolve(resp.access_token);
+        },
+        error_callback: (err: any) => {
+          reject(new Error(err?.message || 'Gagal membuka jendela autentikasi Google.'));
+        }
+      });
+
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } catch (e: any) {
+      reject(e);
+    }
+  });
+};
+
+// Fetch Google User Profile using Access Token
+const fetchGoogleProfile = async (token: string): Promise<GoogleUserProfile> => {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        uid: data.sub || String(Date.now()),
+        email: data.email || '',
+        displayName: data.name || data.given_name || 'Pengguna Google',
+        photoURL: data.picture || undefined,
+      };
+    }
+  } catch (e) {
+    console.warn('Could not fetch user profile from userinfo endpoint:', e);
+  }
+
+  // Fallback profile if userinfo is unavailable
+  return {
+    uid: 'google-user-' + Date.now(),
+    email: '',
+    displayName: 'Pengguna Google Workspace',
+  };
+};
+
+// Sign in with Google (GIS Primary with Firebase Auth Popup Fallback)
 export const signInWithGoogle = async (): Promise<{
   profile: GoogleUserProfile;
   accessToken: string;
 }> => {
+  if (isSigningIn) {
+    throw new Error('Proses login Google sedang berjalan. Harap selesaikan jendela konfirmasi.');
+  }
+
   try {
     isSigningIn = true;
+    const clientId = (firebaseConfig as any).oAuthClientId || '340062808519-ptcmk7an5mdhj09r4iqopo3cjojhhjnp.apps.googleusercontent.com';
+
+    // 1. Try Google Identity Services (GIS) Token Client
+    if (typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2 && clientId) {
+      try {
+        const token = await requestGisToken(clientId);
+        cachedAccessToken = token;
+        const profile = await fetchGoogleProfile(token);
+        saveGoogleDatabaseState({ isConnected: true, error: null });
+        return { profile, accessToken: token };
+      } catch (gisError: any) {
+        console.warn('GIS token acquisition failed, attempting Firebase Auth popup fallback:', gisError);
+        // If user actively cancelled, do not fall back to avoid spamming popups
+        if (gisError.message?.includes('dibatalkan') || gisError.message?.includes('cancelled') || gisError.message?.includes('closed')) {
+          throw gisError;
+        }
+      }
+    }
+
+    // 2. Fallback to Firebase signInWithPopup
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
 
     if (!credential?.accessToken) {
-      throw new Error('Gagal memperoleh access token Google Workspace. Pastikan izin telah diberikan.');
+      throw new Error('Gagal memperoleh access token Google Workspace. Pastikan izin akses telah disetujui.');
     }
 
     cachedAccessToken = credential.accessToken;
@@ -124,8 +206,9 @@ export const signInWithGoogle = async (): Promise<{
     return { profile, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Google Sign In Error:', error);
-    saveGoogleDatabaseState({ error: error.message || 'Gagal login Google' });
-    throw error;
+    const msg = error.message || 'Gagal menghubungkan akun Google Workspace.';
+    saveGoogleDatabaseState({ error: msg });
+    throw new Error(msg);
   } finally {
     isSigningIn = false;
   }
