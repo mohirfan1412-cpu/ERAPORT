@@ -237,7 +237,7 @@ export default function App() {
         settings={settings}
         users={users}
         onOpenAuthModal={() => setIsAuthOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsOpen(false)}
+        onOpenSettingsModal={() => setIsSettingsOpen(true)}
         onOpenBackupModal={() => setIsBackupOpen(true)}
         onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
         onOpenUserManager={() => setIsUserManagerOpen(true)}

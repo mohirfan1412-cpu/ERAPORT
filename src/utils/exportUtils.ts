@@ -5,12 +5,19 @@ import { Student, ClassRoom, StudentReport, SchoolSettings } from '../types';
 import { HADITS_LIST, getHaditsList } from './reportCalculations';
 
 /**
- * Robust, perfectly symmetrical Export Raport Al-Qur'an to PDF (Format F4 / Folio: 215mm x 330mm).
+ * Robust, perfectly symmetrical Export Raport Al-Qur'an to PDF (Format Presisi F4 / Folio: 215mm x 330mm atau A4: 210mm x 297mm).
  * - High-resolution crisp rasterization (300+ DPI equivalent with pixelRatio: 3).
- * - Formatted specifically for Folio / F4 (21.5 cm x 33.0 cm).
- * - Symmetrical margins matching atas, bawah, kanan, kiri, and centered placement.
+ * - Symmetrical margins matching atas, bawah, kanan, kiri (pas dan proporsional).
+ * - Zero clipping, balanced vertical centering, and pristine typography.
  */
-export async function exportReportToPdf(elementId: string, filename: string): Promise<boolean> {
+export async function exportReportToPdf(
+  elementId: string,
+  filename: string,
+  options?: {
+    paperSize?: 'F4' | 'A4';
+    marginMm?: number;
+  }
+): Promise<boolean> {
   let element = document.getElementById(elementId);
 
   // If specified element is not found, search for any available report card element
@@ -28,14 +35,14 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
     return false;
   }
 
-  // Clone node or prepare element to guarantee fixed dimensions and remove any surrounding borders
+  // Preserve original styles
   const originalStyle = element.getAttribute('style') || '';
   const parentContainer = element.parentElement;
   const parentOriginalStyle = parentContainer ? parentContainer.getAttribute('style') || '' : '';
 
   try {
-    // Standard target capture dimensions for F4 ratio
-    const targetWidth = 794; // px (standard 96 DPI for ~215mm)
+    // Standard target capture dimensions
+    const targetWidth = 816; // px (standard 96 DPI for standard paper width at enlarged scale)
 
     // If container is positioned offscreen or hidden, temporarily standardize its dimensions
     if (parentContainer && (parentContainer.id?.includes('hidden') || element.id === 'export-hidden-report-card')) {
@@ -49,7 +56,7 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
       parentContainer.style.visibility = 'visible';
     }
 
-    // Force exact standard width and remove any box-shadow or outer outline during capture
+    // Force exact standard width and clean canvas appearance during capture matching preview
     element.style.width = `${targetWidth}px`;
     element.style.maxWidth = `${targetWidth}px`;
     element.style.minWidth = `${targetWidth}px`;
@@ -57,10 +64,11 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
     element.style.border = 'none';
     element.style.borderRadius = '0px';
     element.style.backgroundColor = '#ffffff';
-    element.style.margin = '0';
-    element.style.padding = '20px 24px';
+    element.style.margin = '0 auto';
+    element.style.padding = '22px 26px';
+    element.style.boxSizing = 'border-box';
 
-    // Capture using html-to-image with pixelRatio 3 for razor-sharp typography
+    // Capture using html-to-image with pixelRatio 3 for razor-sharp typography (300+ DPI)
     const dataUrl = await toPng(element, {
       quality: 1,
       pixelRatio: 3, // Ultra-crisp 300+ DPI equivalent
@@ -85,13 +93,16 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
       throw new Error('Canvas render returned empty data');
     }
 
-    // Build PDF for F4 / Folio (215mm x 330mm)
-    const pageWidth = 215; // F4 / Folio width in mm
-    const pageHeight = 330; // F4 / Folio height in mm
-    const margin = 7.5; // Balanced 7.5mm margin for all 4 sides (atas, bawah, kanan, kiri)
+    // Determine paper dimensions
+    const isA4 = options?.paperSize === 'A4';
+    const pageWidth = isA4 ? 210 : 215; // mm (A4: 210mm, F4: 215mm)
+    const pageHeight = isA4 ? 297 : 330; // mm (A4: 297mm, F4: 330mm)
+    const sideMargin = options?.marginMm !== undefined ? options.marginMm : 8.0; // Balanced 8mm side margins
+    const topMargin = options?.marginMm !== undefined ? options.marginMm : 8.0; // Neatly aligned from top (8mm)
+    const bottomMargin = 8.0;
 
-    const printableWidth = pageWidth - margin * 2; // 200 mm
-    const printableHeight = pageHeight - margin * 2; // 315 mm
+    const printableWidth = pageWidth - sideMargin * 2; // e.g. 199mm (F4) or 194mm (A4)
+    const maxPrintableHeight = pageHeight - topMargin - bottomMargin; // Max allowed height to prevent overflow
 
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -109,25 +120,20 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
     });
 
     const imgRatio = img.width / img.height;
-    const printableRatio = printableWidth / printableHeight;
 
-    // Calculate dimensions to fit exactly within F4 page with matching margins
-    let finalWidth: number;
-    let finalHeight: number;
+    // Calculate dimensions to match preview layout starting neatly from the top
+    let finalWidth = printableWidth;
+    let finalHeight = finalWidth / imgRatio;
 
-    if (imgRatio > printableRatio) {
-      // Constrained by width
-      finalWidth = printableWidth;
-      finalHeight = finalWidth / imgRatio;
-    } else {
-      // Constrained by height
-      finalHeight = printableHeight;
+    // If height exceeds single page printable boundary, scale proportionally
+    if (finalHeight > maxPrintableHeight) {
+      finalHeight = maxPrintableHeight;
       finalWidth = finalHeight * imgRatio;
     }
 
-    // Perfectly center on F4 page both horizontally and vertically so margins on all 4 sides are balanced
+    // Align neatly starting from top margin (posY = topMargin), centered horizontally (posX)
     const posX = (pageWidth - finalWidth) / 2;
-    const posY = (pageHeight - finalHeight) / 2;
+    const posY = topMargin;
 
     pdf.addImage(dataUrl, 'PNG', posX, posY, finalWidth, finalHeight, undefined, 'FAST');
 
@@ -173,9 +179,15 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
 }
 
 /**
- * Generate PDF Blob for direct upload to Google Drive
+ * Generate PDF Blob for direct upload to Google Drive or batch downloads (Pas Atas Bawah Kanan Kiri)
  */
-export async function generateReportPdfBlob(elementId: string): Promise<Blob | null> {
+export async function generateReportPdfBlob(
+  elementId: string,
+  options?: {
+    paperSize?: 'F4' | 'A4';
+    marginMm?: number;
+  }
+): Promise<Blob | null> {
   let element = document.getElementById(elementId);
   if (!element) {
     element =
@@ -210,8 +222,9 @@ export async function generateReportPdfBlob(elementId: string): Promise<Blob | n
     element.style.border = 'none';
     element.style.borderRadius = '0px';
     element.style.backgroundColor = '#ffffff';
-    element.style.margin = '0';
+    element.style.margin = '0 auto';
     element.style.padding = '20px 24px';
+    element.style.boxSizing = 'border-box';
 
     const dataUrl = await toPng(element, {
       quality: 1,
@@ -231,11 +244,15 @@ export async function generateReportPdfBlob(elementId: string): Promise<Blob | n
     }
     element.setAttribute('style', originalStyle);
 
-    const pageWidth = 215;
-    const pageHeight = 330;
-    const margin = 7.5;
-    const printableWidth = pageWidth - margin * 2;
-    const printableHeight = pageHeight - margin * 2;
+    const isA4 = options?.paperSize === 'A4';
+    const pageWidth = isA4 ? 210 : 215;
+    const pageHeight = isA4 ? 297 : 330;
+    const sideMargin = options?.marginMm !== undefined ? options.marginMm : 8.0;
+    const topMargin = options?.marginMm !== undefined ? options.marginMm : 8.0;
+    const bottomMargin = 8.0;
+
+    const printableWidth = pageWidth - sideMargin * 2;
+    const maxPrintableHeight = pageHeight - topMargin - bottomMargin;
 
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -252,20 +269,16 @@ export async function generateReportPdfBlob(elementId: string): Promise<Blob | n
     });
 
     const imgRatio = img.width / img.height;
-    const printableRatio = printableWidth / printableHeight;
-    let finalWidth: number;
-    let finalHeight: number;
+    let finalWidth = printableWidth;
+    let finalHeight = finalWidth / imgRatio;
 
-    if (imgRatio > printableRatio) {
-      finalWidth = printableWidth;
-      finalHeight = finalWidth / imgRatio;
-    } else {
-      finalHeight = printableHeight;
+    if (finalHeight > maxPrintableHeight) {
+      finalHeight = maxPrintableHeight;
       finalWidth = finalHeight * imgRatio;
     }
 
     const posX = (pageWidth - finalWidth) / 2;
-    const posY = (pageHeight - finalHeight) / 2;
+    const posY = topMargin;
     pdf.addImage(dataUrl, 'PNG', posX, posY, finalWidth, finalHeight, undefined, 'FAST');
 
     return pdf.output('blob');
