@@ -639,6 +639,331 @@ export function exportClassMasterExcel(
 }
 
 /**
+ * Unduh Template Excel Resmi untuk Menambah / Mengimpor Data Pengguna (Guru, Koordinator, Admin) dalam Jumlah Banyak
+ */
+export function downloadUserImportTemplate(classes: ClassRoom[] = []) {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Template Data Pengguna
+  const templateRows: any[][] = [
+    [
+      'NO',
+      'NAMA_LENGKAP',
+      'USERNAME',
+      'NIY',
+      'PERAN',
+      'PASSWORD',
+      'KELAS_DIAMPU',
+      'NO_WHATSAPP',
+      'EMAIL',
+      'CATATAN'
+    ],
+    // Sample Row 1: Guru Al-Qur'an
+    [
+      1,
+      'Ustadz M. Mujiono, S.Pd',
+      'mujiono',
+      'NIY. 20240101',
+      'guru',
+      'guru123',
+      classes.length > 0 ? classes[0].name : 'Jilid 1, Tartil A',
+      '081234567891',
+      'mujiono@sekolah.sch.id',
+      'Guru Al-Qur\'an UMMI & Tahfidz'
+    ],
+    // Sample Row 2: Guru Al-Qur'an 2
+    [
+      2,
+      'Ustadzah Fatimah Azzahra, S.Pd.I',
+      'fatimah',
+      'NIY. 20240102',
+      'guru',
+      'guru123',
+      classes.length > 1 ? classes[1].name : 'Jilid 2',
+      '081234567892',
+      'fatimah@sekolah.sch.id',
+      'Pengampu Halaqah Putri'
+    ],
+    // Sample Row 3: Admin / Koordinator Khusus
+    [
+      3,
+      'Ustadz H. Ahmad Fauzi, Lc',
+      'ahmad.fauzi',
+      'NIY. 20240201',
+      'koordinator',
+      'admin123',
+      '',
+      '081234567893',
+      'koordinator@sekolah.sch.id',
+      'Admin & Koordinator Penjamin Mutu Al-Qur\'an'
+    ],
+    // Sample Row 4: Super Admin
+    [
+      4,
+      'Super Admin Utama',
+      'superadmin',
+      'NIY. 20240001',
+      'super_admin',
+      'admin',
+      '',
+      '081234567890',
+      'admin@sekolah.sch.id',
+      'Hak Akses Penuh Sistem'
+    ],
+  ];
+
+  const wsTemplate = XLSX.utils.aoa_to_sheet(templateRows);
+
+  // Set Widths
+  wsTemplate['!cols'] = [
+    { wch: 6 },  // NO
+    { wch: 32 }, // NAMA_LENGKAP
+    { wch: 18 }, // USERNAME
+    { wch: 18 }, // NIY
+    { wch: 16 }, // PERAN (guru / koordinator / super_admin)
+    { wch: 16 }, // PASSWORD
+    { wch: 30 }, // KELAS_DIAMPU
+    { wch: 18 }, // NO_WHATSAPP
+    { wch: 26 }, // EMAIL
+    { wch: 35 }, // CATATAN
+  ];
+
+  XLSX.utils.book_append_sheet(wb, wsTemplate, 'Data Pengguna (Import)');
+
+  // Sheet 2: Petunjuk & Referensi Kelas
+  const guideRows: any[][] = [
+    ['PANDUAN & PETUNJUK PENGISIAN IMPORT EXCEL PENGGUNA'],
+    [''],
+    ['1. KOLOM NAMA_LENGKAP', ':', 'Wajib diisi dengan nama lengkap beserta gelar (Contoh: Ustadz Ahmad, S.Pd)'],
+    ['2. KOLOM USERNAME', ':', 'Wajib diisi, huruf kecil tanpa spasi (Contoh: ahmad / ustadz.ahmad). Digunakan saat login.'],
+    ['3. KOLOM NIY', ':', 'Wajib diisi dengan Nomor Induk Yayasan (Contoh: NIY. 20240101). Digunakan sebagai otentikasi login.'],
+    ['4. KOLOM PERAN', ':', 'Pilihan yang valid: "guru" (Guru Al-Qur\'an), "koordinator" (Admin Khusus), atau "super_admin" (Super Admin)'],
+    ['5. KOLOM PASSWORD', ':', 'Opsional. Jika dikosongkan, pengguna dapat masuk menggunakan NIY atau password bawaan "guru".'],
+    ['6. KOLOM KELAS_DIAMPU', ':', 'Opsional untuk Guru. Masukkan nama kelas/halaqah yang diampu. Pisahkan dengan tanda koma (,) jika lebih dari satu.'],
+    ['7. KOLOM NO_WHATSAPP', ':', 'Opsional. Nomor kontak aktif untuk komunikasi dan notifikasi.'],
+    ['8. KOLOM EMAIL', ':', 'Opsional. Alamat email pengguna.'],
+    [''],
+    ['DAFTAR NAMA KELAS / HALAQAH TERDAFTAR SAAT INI (Bisa disalin ke kolom KELAS_DIAMPU):'],
+    ['NO', 'NAMA KELAS', 'TARGET HAFALAN', 'GURU PENGAJAR SEKARANG']
+  ];
+
+  classes.forEach((cls, idx) => {
+    guideRows.push([
+      idx + 1,
+      cls.name,
+      cls.targetHafalan || '-',
+      cls.teacherName || '-'
+    ]);
+  });
+
+  if (classes.length === 0) {
+    guideRows.push([1, 'Belum ada kelas terdaftar di aplikasi', '-', '-']);
+  }
+
+  const wsGuide = XLSX.utils.aoa_to_sheet(guideRows);
+  wsGuide['!cols'] = [
+    { wch: 6 },
+    { wch: 30 },
+    { wch: 20 },
+    { wch: 28 }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'Petunjuk & Daftar Kelas');
+
+  // Unduh Berkas
+  XLSX.writeFile(wb, 'Template_Import_User_Guru_Admin.xlsx');
+}
+
+/**
+ * Parsing & Validasi Berkas Excel Pengguna untuk Tambah / Update Pengguna Massal
+ */
+export async function parseUsersFromExcel(
+  file: File,
+  classes: ClassRoom[] = []
+): Promise<{
+  parsedUsers: Array<{
+    name: string;
+    username: string;
+    niy: string;
+    role: 'super_admin' | 'coordinator' | 'teacher';
+    password?: string;
+    assignedClassIds?: string[];
+    assignedClassNames?: string[];
+    phone?: string;
+    email?: string;
+    notes?: string;
+    isValid: boolean;
+    errorReason?: string;
+  }>;
+  totalRows: number;
+  validCount: number;
+  invalidCount: number;
+}> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Gunakan sheet pertama
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // Convert ke JSON raw array of objects atau 2D array
+        const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+        if (!rawRows || rawRows.length < 2) {
+          resolve({ parsedUsers: [], totalRows: 0, validCount: 0, invalidCount: 0 });
+          return;
+        }
+
+        // Cari index header
+        let headerRowIndex = 0;
+        let headerMap: Record<string, number> = {};
+
+        for (let i = 0; i < Math.min(rawRows.length, 5); i++) {
+          const row = rawRows[i];
+          if (Array.isArray(row)) {
+            const rowStr = row.map((cell) => String(cell || '').trim().toLowerCase());
+            if (rowStr.some((c) => c.includes('nama') || c.includes('username') || c.includes('niy') || c.includes('peran') || c.includes('role'))) {
+              headerRowIndex = i;
+              row.forEach((colName: any, colIdx: number) => {
+                const norm = String(colName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                headerMap[norm] = colIdx;
+              });
+              break;
+            }
+          }
+        }
+
+        const getColVal = (row: any[], keys: string[]): string => {
+          for (const k of keys) {
+            const idx = headerMap[k];
+            if (idx !== undefined && row[idx] !== undefined) {
+              const val = String(row[idx]).trim();
+              if (val.length > 0) return val;
+            }
+          }
+          return '';
+        };
+
+        const parsedUsers: any[] = [];
+        let validCount = 0;
+        let invalidCount = 0;
+
+        // Loop rows setelah header
+        for (let r = headerRowIndex + 1; r < rawRows.length; r++) {
+          const row = rawRows[r];
+          if (!row || !Array.isArray(row) || row.every((c) => String(c || '').trim() === '')) {
+            continue; // Skip baris kosong
+          }
+
+          const rawName = getColVal(row, ['namalengkap', 'nama', 'fullname', 'name', 'namapengguna', 'namaguru']);
+          const rawUsername = getColVal(row, ['username', 'user', 'namauser', 'login', 'iduser']);
+          const rawNiy = getColVal(row, ['niy', 'nip', 'noinduk', 'nomorinduk', 'niyyayasan', 'id']);
+          const rawRole = getColVal(row, ['peran', 'role', 'akses', 'jabatan', 'hakakses']).toLowerCase();
+          const rawPassword = getColVal(row, ['password', 'sandi', 'pin', 'kunci', 'pass']);
+          const rawClasses = getColVal(row, ['kelasdiampu', 'kelas', 'halaqah', 'assignedclasses', 'rombel']);
+          const rawPhone = getColVal(row, ['nowhatsapp', 'whatsapp', 'wa', 'nohp', 'hp', 'phone', 'telp', 'telepon']);
+          const rawEmail = getColVal(row, ['email', 'surel', 'mail']);
+          const rawNotes = getColVal(row, ['catatan', 'notes', 'keterangan', 'ket']);
+
+          // Validasi kelengkapan
+          let isValid = true;
+          let errorReason = '';
+
+          if (!rawName) {
+            isValid = false;
+            errorReason = 'Nama lengkap wajib diisi';
+          } else if (!rawUsername) {
+            isValid = false;
+            errorReason = 'Username wajib diisi';
+          } else if (!rawNiy) {
+            isValid = false;
+            errorReason = 'NIY wajib diisi';
+          }
+
+          // Normalisasi Username
+          const cleanUsername = rawUsername.toLowerCase().replace(/\s+/g, '.');
+
+          // Normalisasi Role
+          let cleanRole: 'super_admin' | 'coordinator' | 'teacher' = 'teacher';
+          if (rawRole.includes('super') || rawRole.includes('admin utama')) {
+            cleanRole = 'super_admin';
+          } else if (rawRole.includes('koordinator') || rawRole.includes('admin') || rawRole.includes('coordinator')) {
+            cleanRole = 'coordinator';
+          } else {
+            cleanRole = 'teacher';
+          }
+
+          // Resolusi Kelas
+          const assignedClassIds: string[] = [];
+          const assignedClassNames: string[] = [];
+
+          if (rawClasses) {
+            const classTokens = rawClasses.split(/[,;\n]+/).map((t) => t.trim()).filter(Boolean);
+            classTokens.forEach((token) => {
+              const matched = classes.find(
+                (c) =>
+                  c.name.toLowerCase() === token.toLowerCase() ||
+                  c.id.toLowerCase() === token.toLowerCase() ||
+                  c.name.toLowerCase().includes(token.toLowerCase())
+              );
+              if (matched) {
+                if (!assignedClassIds.includes(matched.id)) {
+                  assignedClassIds.push(matched.id);
+                  assignedClassNames.push(matched.name);
+                }
+              } else {
+                assignedClassNames.push(token);
+              }
+            });
+          }
+
+          if (isValid) {
+            validCount++;
+          } else {
+            invalidCount++;
+          }
+
+          parsedUsers.push({
+            name: rawName,
+            username: cleanUsername,
+            niy: rawNiy,
+            role: cleanRole,
+            password: rawPassword || '',
+            assignedClassIds,
+            assignedClassNames,
+            phone: rawPhone,
+            email: rawEmail,
+            notes: rawNotes,
+            isValid,
+            errorReason,
+          });
+        }
+
+        resolve({
+          parsedUsers,
+          totalRows: parsedUsers.length,
+          validCount,
+          invalidCount,
+        });
+      } catch (err: any) {
+        reject(new Error(err?.message || 'Gagal membaca berkas Excel. Pastikan format sesuai template.'));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Terjadi kesalahan saat membaca file.'));
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
  * Print standard report directly using native browser print dialog.
  */
 export function printElementDirectly(elementId: string) {

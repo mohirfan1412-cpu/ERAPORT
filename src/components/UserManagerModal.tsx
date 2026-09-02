@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { UserAccount, UserRole, ClassRoom } from '../types';
 import { Storage } from '../utils/storage';
+import { downloadUserImportTemplate, parseUsersFromExcel } from '../utils/exportUtils';
 import {
   Users,
   ShieldCheck,
@@ -21,6 +22,14 @@ import {
   Phone,
   Mail,
   UserPlus,
+  FileSpreadsheet,
+  Upload,
+  Download,
+  AlertCircle,
+  FileCheck,
+  RefreshCw,
+  HelpCircle,
+  ArrowRight,
 } from 'lucide-react';
 
 interface UserManagerModalProps {
@@ -42,7 +51,7 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
   onUpdateUsers,
   onSelectUser,
 }) => {
-  const [activeTab, setActiveTab] = useState<'list' | 'superadmin' | 'add'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'superadmin' | 'add' | 'import'>('list');
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   // Super Admin custom credential form
@@ -69,6 +78,33 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
     notes: '',
   });
 
+  // Import Excel state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [importPreviewData, setImportPreviewData] = useState<
+    Array<{
+      name: string;
+      username: string;
+      niy: string;
+      role: 'super_admin' | 'coordinator' | 'teacher';
+      password?: string;
+      assignedClassIds?: string[];
+      assignedClassNames?: string[];
+      phone?: string;
+      email?: string;
+      notes?: string;
+      isValid: boolean;
+      errorReason?: string;
+    }>
+  >([]);
+  const [importSummary, setImportSummary] = useState<{
+    total: number;
+    valid: number;
+    invalid: number;
+  }>({ total: 0, valid: 0, invalid: 0 });
+  const [mergeStrategy, setMergeStrategy] = useState<'update' | 'skip'>('update');
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToToastMessage] = useState<string | null>(null);
 
@@ -76,7 +112,122 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
 
   const showToast = (msg: string) => {
     setToToastMessage(msg);
-    setTimeout(() => setToToastMessage(null), 3000);
+    setTimeout(() => setToToastMessage(null), 3500);
+  };
+
+  const handleDownloadTemplate = () => {
+    try {
+      downloadUserImportTemplate(classes);
+      showToast('Template Excel Pengguna berhasil diunduh!');
+    } catch (err: any) {
+      alert('Gagal mengunduh template Excel: ' + (err?.message || 'Error tidak diketahui'));
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFileName(file.name);
+    setIsProcessingFile(true);
+
+    try {
+      const res = await parseUsersFromExcel(file, classes);
+      setImportPreviewData(res.parsedUsers);
+      setImportSummary({
+        total: res.totalRows,
+        valid: res.validCount,
+        invalid: res.invalidCount,
+      });
+      if (res.totalRows === 0) {
+        showToast('Tidak ada baris data pengguna yang terdeteksi di file.');
+      } else {
+        showToast(`Berhasil membaca ${res.totalRows} baris (${res.validCount} valid).`);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Gagal membaca berkas Excel.');
+      setImportPreviewData([]);
+      setImportSummary({ total: 0, valid: 0, invalid: 0 });
+    } finally {
+      setIsProcessingFile(false);
+      // Reset input agar bisa re-upload file yang sama jika diedit
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleConfirmImport = () => {
+    const validUsersToImport = importPreviewData.filter((u) => u.isValid);
+    if (validUsersToImport.length === 0) {
+      alert('Tidak ada data pengguna yang valid untuk diimpor.');
+      return;
+    }
+
+    let updatedUsers = [...users];
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    validUsersToImport.forEach((imported) => {
+      const existingIndex = updatedUsers.findIndex(
+        (u) =>
+          u.username.toLowerCase() === imported.username.toLowerCase() ||
+          u.niy.toLowerCase() === imported.niy.toLowerCase()
+      );
+
+      if (existingIndex >= 0) {
+        // Jangan timpa role Super Admin aktif menjadi guru biasa kecuali akun yang memang diimpor
+        const existing = updatedUsers[existingIndex];
+        if (mergeStrategy === 'update') {
+          updatedUsers[existingIndex] = {
+            ...existing,
+            name: imported.name,
+            username: imported.username,
+            niy: imported.niy,
+            role: imported.role,
+            password: imported.password || existing.password || 'guru',
+            assignedClassIds:
+              imported.assignedClassIds && imported.assignedClassIds.length > 0
+                ? imported.assignedClassIds
+                : existing.assignedClassIds || [],
+            phone: imported.phone || existing.phone || '',
+            email: imported.email || existing.email || '',
+            notes: imported.notes || existing.notes || '',
+          };
+          updatedCount++;
+        }
+      } else {
+        // Tambah Akun Baru
+        const newUser: UserAccount = {
+          id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          name: imported.name,
+          username: imported.username,
+          niy: imported.niy,
+          role: imported.role,
+          password: imported.password || 'guru',
+          assignedClassIds: imported.assignedClassIds || [],
+          phone: imported.phone || '',
+          email: imported.email || '',
+          notes: imported.notes || '',
+        };
+        updatedUsers.push(newUser);
+        addedCount++;
+      }
+    });
+
+    // Simpan ke Storage & Sync
+    Storage.saveUsers(updatedUsers);
+    onUpdateUsers(updatedUsers);
+
+    // Reset preview
+    setImportPreviewData([]);
+    setSelectedFileName(null);
+    setImportSummary({ total: 0, valid: 0, invalid: 0 });
+    setActiveTab('list');
+
+    showToast(
+      `Sukses mengimpor pengguna! (+${addedCount} akun baru, ${updatedCount} diperbarui)`
+    );
   };
 
   // Handle Save Super Admin Custom Credentials
@@ -258,20 +409,38 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 mt-4 p-1 bg-slate-100/90 rounded-2xl shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-4 p-1 bg-slate-100/90 rounded-2xl shrink-0 overflow-x-auto">
           <button
             onClick={() => {
               setActiveTab('list');
               setEditingUserId(null);
             }}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[120px] py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'list'
                 ? 'bg-white text-blue-950 shadow-xs border border-slate-200/60'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Users className="w-4 h-4 text-blue-700" />
-            <span>Daftar Guru & Admin ({users.length})</span>
+            <Users className="w-3.5 h-3.5 text-blue-700" />
+            <span>Daftar User ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('import');
+              setEditingUserId(null);
+            }}
+            className={`flex-1 min-w-[130px] py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              activeTab === 'import'
+                ? 'bg-white text-emerald-950 shadow-xs border border-emerald-200/60 font-black'
+                : 'text-emerald-700 hover:text-emerald-900'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Import Excel</span>
+            <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold border border-emerald-300">
+              Bulk
+            </span>
           </button>
 
           <button
@@ -279,14 +448,14 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
               setActiveTab('superadmin');
               setEditingUserId(null);
             }}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[130px] py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'superadmin'
                 ? 'bg-white text-blue-950 shadow-xs border border-slate-200/60'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <ShieldCheck className="w-4 h-4 text-amber-600" />
-            <span>Kredensial Super Admin (Bebas)</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+            <span>Super Admin</span>
           </button>
 
           <button
@@ -306,14 +475,14 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
                 });
               }
             }}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'add'
                 ? 'bg-white text-blue-950 shadow-xs border border-slate-200/60'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <UserPlus className="w-4 h-4 text-emerald-600" />
-            <span>{editingUserId ? 'Edit Akun' : '+ Tambah Akun'}</span>
+            <UserPlus className="w-3.5 h-3.5 text-blue-600" />
+            <span>{editingUserId ? 'Edit Akun' : '+ Tambah'}</span>
           </button>
         </div>
 
@@ -330,23 +499,44 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
           {/* TAB 1: USER LIST */}
           {activeTab === 'list' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/70 rounded-2xl p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-blue-50/70 border border-blue-200/70 rounded-2xl p-3">
                 <div className="flex items-center gap-2 text-blue-950 font-medium">
                   <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
                   <span>
-                    Guru & Admin dapat masuk ke portal masing-masing menggunakan <strong>Nama / Username</strong> dan <strong>NIY (Nomor Induk Yayasan)</strong>.
+                    Masuk ke portal menggunakan <strong>Username</strong> dan <strong>NIY</strong>.
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    setActiveTab('add');
-                    setEditingUserId(null);
-                  }}
-                  className="shrink-0 bg-blue-900 hover:bg-blue-950 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah</span>
-                </button>
+                
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+                  <button
+                    onClick={handleDownloadTemplate}
+                    className="bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300/80 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-2xs text-[11.5px]"
+                    title="Unduh format template Excel untuk tambah banyak user"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Template Excel</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('import')}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs text-[11.5px]"
+                    title="Upload file Excel untuk import akun massal"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Excel</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('add');
+                      setEditingUserId(null);
+                    }}
+                    className="bg-blue-900 hover:bg-blue-950 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs text-[11.5px]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -583,6 +773,279 @@ export const UserManagerModal: React.FC<UserManagerModalProps> = ({
                 </button>
               </div>
             </form>
+          )}
+
+          {/* TAB 4: IMPORT EXCEL MASSAL */}
+          {activeTab === 'import' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Step 1 & 2 Instructions Banner */}
+              <div className="bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-300/80 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
+                      <FileSpreadsheet className="w-5 h-5 text-emerald-700" />
+                      <span>Tambah Pengguna Massal via Berkas Excel (.xlsx)</span>
+                    </h4>
+                    <p className="text-slate-600 text-[11.5px] mt-1 leading-relaxed">
+                      Tambahkan puluhan akun Guru Al-Qur'an, Koordinator/Admin, dan Super Admin sekaligus dalam hitungan detik menggunakan format spreadsheet resmi.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="shrink-0 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-700/20 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Template Excel</span>
+                  </button>
+                </div>
+
+                {/* Workflow steps */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-emerald-200/60 text-[11px]">
+                  <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-700 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                      1
+                    </span>
+                    <div>
+                      <strong className="text-emerald-950 block">Unduh Template</strong>
+                      <span className="text-slate-500">Klik tombol download template di atas untuk format baku.</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-700 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                      2
+                    </span>
+                    <div>
+                      <strong className="text-emerald-950 block">Isi Data Pengguna</strong>
+                      <span className="text-slate-500">Isi Nama, Username, NIY, Peran (guru/admin), & kelas diampu.</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-700 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                      3
+                    </span>
+                    <div>
+                      <strong className="text-emerald-950 block">Upload & Simpan</strong>
+                      <span className="text-slate-500">Unggah file di bawah, periksa pratinjau, lalu simpan.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload Dropzone / Picker */}
+              <div className="bg-white border-2 border-dashed border-emerald-200 hover:border-emerald-400 rounded-2xl p-5 text-center transition-colors">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".xlsx, .xls"
+                  className="hidden"
+                  id="excel-user-file-input"
+                />
+
+                <div className="max-w-md mx-auto space-y-2">
+                  <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shadow-xs">
+                    <Upload className="w-6 h-6" />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="excel-user-file-input"
+                      className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-100 hover:bg-emerald-200 px-4 py-2 rounded-xl transition-all shadow-2xs"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>{selectedFileName ? 'Pilih Berkas Lain...' : 'Pilih Berkas Excel (.xlsx / .xls)'}</span>
+                    </label>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500">
+                    {selectedFileName ? (
+                      <span className="font-semibold text-emerald-900">
+                        Berkas aktif: <strong className="font-mono">{selectedFileName}</strong>
+                      </span>
+                    ) : (
+                      'Format yang didukung: .xlsx atau .xls (Microsoft Excel / Google Sheets / LibreOffice)'
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Import Preview Section */}
+              {isProcessingFile && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-2">
+                  <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">Membaca dan memvalidasi struktur berkas Excel...</p>
+                </div>
+              )}
+
+              {importPreviewData.length > 0 && (
+                <div className="space-y-3 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                  {/* Summary Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="px-3 py-1 bg-blue-50 border border-blue-200 rounded-xl text-blue-950 text-xs font-bold">
+                        Total: <strong>{importSummary.total}</strong> Baris
+                      </div>
+                      <div className="px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 text-xs font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Valid: <strong>{importSummary.valid}</strong></span>
+                      </div>
+                      {importSummary.invalid > 0 && (
+                        <div className="px-3 py-1 bg-rose-50 border border-rose-200 rounded-xl text-rose-950 text-xs font-bold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Kurang Lengkap: <strong>{importSummary.invalid}</strong></span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Merge strategy */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-600">Jika akun sudah ada:</span>
+                      <select
+                        value={mergeStrategy}
+                        onChange={(e) => setMergeStrategy(e.target.value as 'update' | 'skip')}
+                        className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 outline-hidden"
+                      >
+                        <option value="update">Perbarui Data (Update)</option>
+                        <option value="skip">Lewati (Pertahankan Lama)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Preview Table */}
+                  <div className="overflow-x-auto max-h-[300px] border border-slate-200 rounded-xl">
+                    <table className="w-full text-left text-[11px] text-slate-700">
+                      <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 font-bold text-slate-900 uppercase text-[10px]">
+                        <tr>
+                          <th className="py-2 px-2 text-center w-8">No</th>
+                          <th className="py-2 px-3">Nama Lengkap</th>
+                          <th className="py-2 px-2">Username</th>
+                          <th className="py-2 px-2">NIY</th>
+                          <th className="py-2 px-2 text-center">Peran</th>
+                          <th className="py-2 px-2">Kelas Diampu</th>
+                          <th className="py-2 px-2">Password</th>
+                          <th className="py-2 px-2">WhatsApp</th>
+                          <th className="py-2 px-2 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {importPreviewData.map((row, idx) => {
+                          const isDuplicate = users.some(
+                            (u) =>
+                              u.username.toLowerCase() === row.username.toLowerCase() ||
+                              u.niy.toLowerCase() === row.niy.toLowerCase()
+                          );
+
+                          return (
+                            <tr
+                              key={idx}
+                              className={
+                                !row.isValid
+                                  ? 'bg-rose-50/50'
+                                  : isDuplicate
+                                  ? 'bg-amber-50/40 hover:bg-amber-50/70'
+                                  : 'hover:bg-slate-50'
+                              }
+                            >
+                              <td className="py-2 px-2 text-center text-slate-400 font-mono">{idx + 1}</td>
+                              <td className="py-2 px-3 font-bold text-slate-950">
+                                <div>{row.name || <span className="text-rose-500 italic">(Kosong)</span>}</div>
+                                {row.notes && <div className="text-[9.5px] text-slate-400 font-normal">{row.notes}</div>}
+                              </td>
+                              <td className="py-2 px-2 font-mono text-blue-900 font-semibold">
+                                {row.username || <span className="text-rose-500 italic">(Kosong)</span>}
+                              </td>
+                              <td className="py-2 px-2 font-mono text-slate-800">
+                                {row.niy || <span className="text-rose-500 italic">(Kosong)</span>}
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <span
+                                  className={`text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded-md border ${
+                                    row.role === 'super_admin'
+                                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                      : row.role === 'coordinator'
+                                      ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                      : 'bg-teal-100 text-teal-900 border-teal-300'
+                                  }`}
+                                >
+                                  {row.role === 'super_admin' ? 'Super Admin' : row.role === 'coordinator' ? 'Koordinator' : 'Guru'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2">
+                                {row.assignedClassNames && row.assignedClassNames.length > 0 ? (
+                                  <span className="text-[10px] text-slate-700 font-medium">
+                                    {row.assignedClassNames.join(', ')}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-[10px]">-</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-2 font-mono text-slate-500 text-[10.5px]">
+                                {row.password || '(Default NIY)'}
+                              </td>
+                              <td className="py-2 px-2 font-mono text-slate-600 text-[10px]">
+                                {row.phone || '-'}
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                {row.isValid ? (
+                                  isDuplicate ? (
+                                    <span className="text-[9.5px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-full border border-amber-300">
+                                      {mergeStrategy === 'update' ? 'Update Akun' : 'Lewati (Ada)'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9.5px] font-bold bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded-full border border-emerald-300">
+                                      Siap Tambah
+                                    </span>
+                                  )
+                                ) : (
+                                  <span
+                                    className="text-[9.5px] font-bold bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-full border border-rose-300 cursor-help"
+                                    title={row.errorReason}
+                                  >
+                                    {row.errorReason || 'Tidak Valid'}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      * Data yang valid akan otomatis disimpan ke sistem & disinkronkan ke cloud.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImportPreviewData([]);
+                          setSelectedFileName(null);
+                        }}
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmImport}
+                        disabled={importSummary.valid === 0}
+                        className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-emerald-700/20 active:scale-95 transition-all flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Simpan {importSummary.valid} Pengguna ke Sistem</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* TAB 3: ADD / EDIT GURU & ADMIN */}
