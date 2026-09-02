@@ -48,7 +48,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ isOpen, onClose, onDat
   };
 
   const handleResetData = () => {
-    if (window.confirm('Reset seluruh data ke format bawaan awal? (Semua perubahan lokal akan diganti contoh standar)')) {
+    if (window.confirm('Apakah Anda yakin ingin menginisialisasi ulang seluruh data aplikasi? Tindakan ini akan mengembalikan susunan database ke pengaturan awal lembaga.')) {
       Storage.resetAllDataToDefault();
       onDataRestored();
       onClose();
@@ -149,14 +149,14 @@ export const BackupModal: React.FC<BackupModalProps> = ({ isOpen, onClose, onDat
             )}
           </div>
 
-          {/* Reset Demo Data */}
+          {/* Inisialisasi Ulang Data */}
           <div className="pt-3 border-t border-emerald-900/10 flex justify-between items-center">
             <button
               onClick={handleResetData}
-              className="text-rose-700 hover:text-rose-900 font-bold text-[11px] flex items-center gap-1 transition-colors"
+              className="text-rose-700 hover:text-rose-900 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset ke Contoh Standar</span>
+              <span>Inisialisasi Ulang Sistem</span>
             </button>
             <button
               onClick={onClose}

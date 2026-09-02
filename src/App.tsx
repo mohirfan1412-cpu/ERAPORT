@@ -151,7 +151,23 @@ export default function App() {
 
   // Logout / Switch portal handler
   const handleLogout = () => {
+    Storage.clearAuthSession();
     setIsAuthOpen(true);
+  };
+
+  const handleLoginSuccess = (user: UserAccount, targetNis?: string) => {
+    setCurrentUser(user);
+    setIsAuthOpen(false);
+    if (user.role === 'parent') {
+      if (targetNis) {
+        setParentInitialSearch(targetNis);
+      }
+      setActiveView('parent');
+    } else if (user.role === 'teacher') {
+      setActiveView('editor');
+    } else {
+      setActiveView('dashboard');
+    }
   };
 
   // Reload data after backup or Google Sheets sync
@@ -340,11 +356,17 @@ export default function App() {
 
       <AuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        onClose={() => {
+          if (Storage.hasActiveSession()) {
+            setIsAuthOpen(false);
+          }
+        }}
         currentUser={currentUser}
         users={users}
         students={students}
+        settings={settings}
         onSelectUser={handleSelectUser}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       <UserManagerModal

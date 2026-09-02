@@ -44,7 +44,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
       const nisParam = params.get('nis') || params.get('search') || params.get('verify');
       if (nisParam) return nisParam;
     }
-    return '2311063106'; // default sample demo
+    return '';
   });
 
   const [matchedStudent, setMatchedStudent] = useState<Student | null>(() => {
@@ -65,10 +65,12 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
         if (found) return found;
       }
     }
-    return students.find((s) => s.nis === '2311063106') || students[0] || null;
+    return students[0] || null;
   });
 
-  const [hasSearched, setHasSearched] = useState<boolean>(true);
+  const [hasSearched, setHasSearched] = useState<boolean>(() => {
+    return !!initialSearch || !!(typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('nis') || new URLSearchParams(window.location.search).get('search')));
+  });
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -168,7 +170,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
                 type="text"
                 value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
-                placeholder="Ketik NIS (contoh: 2311063106) atau Nama Santri..."
+                placeholder="Ketik NIS atau Nama Lengkap Santri..."
                 className="w-full px-3 py-2.5 text-xs sm:text-sm text-slate-900 font-bold outline-hidden bg-transparent"
               />
               <button
@@ -181,30 +183,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
               </button>
             </div>
             <div className="flex items-center justify-center gap-2 mt-2.5 text-[11px] text-blue-200 font-medium">
-              <span>Contoh pencarian cepat:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchKey('2311063106');
-                  const s = students.find((x) => x.nis === '2311063106');
-                  if (s) setMatchedStudent(s);
-                }}
-                className="underline hover:text-amber-300 font-bold text-amber-200 cursor-pointer"
-              >
-                2311063106 (Dzakki)
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchKey('2311063108');
-                  const s = students.find((x) => x.nis === '2311063108');
-                  if (s) setMatchedStudent(s);
-                }}
-                className="underline hover:text-amber-300 font-bold text-amber-200 cursor-pointer"
-              >
-                2311063108 (Aisyah)
-              </button>
+              <span>* Masukkan Nomor Induk Santri (NIS) atau nama lengkap santri sesuai data lembaga</span>
             </div>
           </form>
         </div>

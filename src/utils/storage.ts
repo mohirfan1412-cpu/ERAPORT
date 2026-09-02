@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'eraport_settings_v1',
   USERS: 'eraport_users_v1',
   CURRENT_USER: 'eraport_current_user_v1',
+  AUTH_SESSION: 'eraport_auth_session_v1',
   CLASSES: 'eraport_classes_v1',
   STUDENTS: 'eraport_students_v1',
   REPORTS: 'eraport_reports_v1',
@@ -513,6 +514,29 @@ export const Storage = {
   },
   setCurrentUser: (user: UserAccount) => {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  },
+
+  hasActiveSession: (): boolean => {
+    const session = sessionStorage.getItem(STORAGE_KEYS.AUTH_SESSION) || localStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+    return !!session;
+  },
+  getAuthSession: (): UserAccount | null => {
+    const data = sessionStorage.getItem(STORAGE_KEYS.AUTH_SESSION) || localStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+    if (!data) return null;
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  },
+  setAuthSession: (user: UserAccount) => {
+    sessionStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(user));
+    localStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(user));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  },
+  clearAuthSession: () => {
+    sessionStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+    localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
   },
 
   getClasses: (): ClassRoom[] => {

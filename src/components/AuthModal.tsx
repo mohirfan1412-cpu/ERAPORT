@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { UserAccount, Student } from '../types';
+import { UserAccount, Student, SchoolSettings } from '../types';
 import { Storage } from '../utils/storage';
 import {
   ShieldCheck,
   GraduationCap,
   Users,
-  X,
   KeyRound,
   Lock,
   ArrowRight,
@@ -14,15 +13,18 @@ import {
   CheckCircle2,
   Sparkles,
   Search,
+  BookOpen,
 } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   currentUser: UserAccount;
   users: UserAccount[];
   students?: Student[];
+  settings?: SchoolSettings;
   onSelectUser: (user: UserAccount) => void;
+  onLoginSuccess?: (user: UserAccount, targetNis?: string) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -31,7 +33,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   currentUser: _currentUser,
   users,
   students = [],
+  settings,
   onSelectUser,
+  onLoginSuccess,
 }) => {
   const [activePortal, setActivePortal] = useState<'teacher' | 'admin' | 'parent' | 'superadmin'>('teacher');
 
@@ -50,6 +54,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Clean strings for flexible matching
   const cleanStr = (s?: string) => (s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
+  const finishLogin = (user: UserAccount, targetNis?: string) => {
+    onSelectUser(user);
+    Storage.setAuthSession(user);
+    if (onLoginSuccess) {
+      onLoginSuccess(user, targetNis);
+    } else if (onClose) {
+      onClose();
+    }
+  };
+
   // 1. Teacher Portal Login
   const handleTeacherLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +74,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const cleanNiy = cleanStr(niyInput);
 
     if (!cleanUser || !cleanNiy) {
-      setErrorMessage('Mohon masukkan Nama / Username dan NIY (Nomor Induk Yayasan).');
+      setErrorMessage('Mohon masukkan Nama/Username Guru dan Password/NIY.');
       return;
     }
 
@@ -68,23 +82,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const matchedTeacher = users.find((u) => {
       if (u.role !== 'teacher') return false;
       const matchNameOrUser = cleanStr(u.username) === cleanUser || cleanStr(u.name).includes(cleanUser);
-      const matchNiy =
+      const matchPasswordOrNiy =
+        (u.password && cleanStr(u.password) === cleanNiy) ||
         cleanStr(u.niy) === cleanNiy ||
-        cleanStr(u.nip) === cleanNiy ||
-        (u.password && cleanStr(u.password) === cleanNiy);
-      return matchNameOrUser && matchNiy;
+        (u.nip && cleanStr(u.nip) === cleanNiy);
+      return matchNameOrUser && matchPasswordOrNiy;
     });
 
     if (matchedTeacher) {
       setSuccessMessage(`Selamat datang, ${matchedTeacher.name}! Membuka portal guru...`);
       setTimeout(() => {
-        onSelectUser(matchedTeacher);
-        Storage.setCurrentUser(matchedTeacher);
-        onClose();
-      }, 600);
+        finishLogin(matchedTeacher);
+      }, 500);
     } else {
       setErrorMessage(
-        'Akun guru atau NIY tidak sesuai. Pastikan Username/Nama dan NIY terdaftar di data yayasan.'
+        'Akun guru atau Password/NIY tidak sesuai. Pastikan Username dan Password/NIY sesuai dengan yang terdaftar di yayasan.'
       );
     }
   };
@@ -99,29 +111,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const cleanNiy = cleanStr(niyInput);
 
     if (!cleanUser || !cleanNiy) {
-      setErrorMessage('Mohon masukkan Username / Nama dan NIY Admin Khusus.');
+      setErrorMessage('Mohon masukkan Username/Nama Admin dan Password/NIY.');
       return;
     }
 
     const matchedAdmin = users.find((u) => {
       if (u.role !== 'coordinator' && u.role !== 'super_admin') return false;
       const matchNameOrUser = cleanStr(u.username) === cleanUser || cleanStr(u.name).includes(cleanUser);
-      const matchNiy =
+      const matchPasswordOrNiy =
+        (u.password && cleanStr(u.password) === cleanNiy) ||
         cleanStr(u.niy) === cleanNiy ||
-        cleanStr(u.nip) === cleanNiy ||
-        (u.password && cleanStr(u.password) === cleanNiy);
-      return matchNameOrUser && matchNiy;
+        (u.nip && cleanStr(u.nip) === cleanNiy);
+      return matchNameOrUser && matchPasswordOrNiy;
     });
 
     if (matchedAdmin) {
       setSuccessMessage(`Akses Admin Khusus terverifikasi: ${matchedAdmin.name}`);
       setTimeout(() => {
-        onSelectUser(matchedAdmin);
-        Storage.setCurrentUser(matchedAdmin);
-        onClose();
-      }, 600);
+        finishLogin(matchedAdmin);
+      }, 500);
     } else {
-      setErrorMessage('Kredensial Admin Khusus atau NIY tidak sesuai.');
+      setErrorMessage('Kredensial Admin Khusus atau Password/NIY tidak sesuai.');
     }
   };
 
@@ -141,20 +151,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       (s) => cleanStr(s.nis) === cleanNis || cleanStr(s.name).includes(cleanNis)
     );
 
+    if (!matchedStudent) {
+      setErrorMessage('Santri dengan NIS atau Nama tersebut tidak ditemukan dalam database lembaga. Silakan periksa kembali nomor induk yang dimasukkan.');
+      return;
+    }
+
     const parentUser: UserAccount = {
-      id: 'user-parent',
-      username: 'walimurid',
-      name: matchedStudent ? `Wali Santri - ${matchedStudent.name}` : 'Wali Santri / Orang Tua',
+      id: `user-parent-${matchedStudent.id}`,
+      username: `wali_${matchedStudent.nis}`,
+      name: `Wali Santri - ${matchedStudent.name}`,
       niy: '-',
       role: 'parent',
-      notes: matchedStudent ? `Akses raport untuk ${matchedStudent.name} (NIS: ${matchedStudent.nis})` : undefined,
+      notes: `Akses raport untuk ${matchedStudent.name} (NIS: ${matchedStudent.nis})`,
     };
 
-    setSuccessMessage(`Berhasil membuka portal wali santri.`);
+    setSuccessMessage(`Data Santri ${matchedStudent.name} ditemukan. Membuka raport...`);
     setTimeout(() => {
-      onSelectUser(parentUser);
-      Storage.setCurrentUser(parentUser);
-      onClose();
+      finishLogin(parentUser, matchedStudent.nis);
     }, 500);
   };
 
@@ -167,6 +180,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const cleanUser = cleanStr(usernameInput);
     const cleanPass = cleanStr(passwordInput);
 
+    if (!cleanUser || !cleanPass) {
+      setErrorMessage('Mohon masukkan Username dan Password Super Admin.');
+      return;
+    }
+
     const superAdmin = users.find((u) => u.role === 'super_admin') || users[0];
 
     const matchUser =
@@ -178,58 +196,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const matchPass =
       (superAdmin.password && cleanStr(superAdmin.password) === cleanPass) ||
       cleanStr(superAdmin.niy) === cleanPass ||
-      cleanPass === 'admin' ||
-      cleanPass === cleanStr(superAdmin.username);
+      cleanPass === 'admin';
 
     if (matchUser && matchPass) {
       setSuccessMessage(`Akses Super Admin Terverifikasi. Selamat datang!`);
       setTimeout(() => {
-        onSelectUser(superAdmin);
-        Storage.setCurrentUser(superAdmin);
-        onClose();
-      }, 600);
+        finishLogin(superAdmin);
+      }, 500);
     } else {
-      setErrorMessage('Username atau Password Super Admin tidak tepat. Silakan periksa kembali.');
+      setErrorMessage('Username atau Password Super Admin tidak tepat. Silakan periksa kembali kata sandi Anda.');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#07193b]/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#07193b]/85 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white/95 backdrop-blur-2xl rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-white text-slate-800 animate-in fade-in zoom-in duration-150 my-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-4 mb-4">
+        {/* Header Branding */}
+        <div className="border-b border-slate-200/80 pb-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#07193b] to-blue-900 text-amber-400 flex items-center justify-center font-bold shadow-md">
-              <KeyRound className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#07193b] to-blue-900 text-amber-400 flex items-center justify-center font-bold shadow-md shrink-0">
+              <KeyRound className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-black text-lg text-slate-950">Portal Masuk E-Raport</h3>
-              <p className="text-xs text-slate-500 font-medium">
-                Pilih portal sesuai peran: Guru Khusus, Admin Khusus, Wali Murid, atau Super Admin
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-black text-lg text-slate-950 leading-tight">Portal Masuk E-Raport</h2>
+                <span className="bg-amber-400 text-blue-950 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase shadow-2xs">
+                  Resmi
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                {settings?.schoolName || 'Lembaga Pendidikan Al-Qur’an & Tahfidz'}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <p className="text-xs text-slate-600 font-medium mt-2.5 bg-slate-50 border border-slate-200/70 rounded-xl px-3 py-2 leading-relaxed">
+            Silakan masukkan kredensial akun terdaftar untuk masuk ke dalam sistem. Akses terbatas dan terproteksi.
+          </p>
         </div>
 
         {/* Portal Type Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100/90 rounded-2xl mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-slate-100 rounded-2xl mb-4">
           {/* Tab 1: Guru */}
           <button
+            type="button"
             onClick={() => {
               setActivePortal('teacher');
               setErrorMessage(null);
               setSuccessMessage(null);
+              setUsernameInput('');
+              setNiyInput('');
+              setPasswordInput('');
+              setNisInput('');
             }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
               activePortal === 'teacher'
                 ? 'bg-teal-700 text-white shadow-md shadow-teal-700/20'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <GraduationCap className="w-4 h-4 shrink-0" />
@@ -238,15 +260,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Tab 2: Admin Khusus */}
           <button
+            type="button"
             onClick={() => {
               setActivePortal('admin');
               setErrorMessage(null);
               setSuccessMessage(null);
+              setUsernameInput('');
+              setNiyInput('');
+              setPasswordInput('');
+              setNisInput('');
             }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
               activePortal === 'admin'
                 ? 'bg-blue-900 text-white shadow-md shadow-blue-900/20'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <ShieldCheck className="w-4 h-4 shrink-0" />
@@ -255,15 +282,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Tab 3: Wali Murid */}
           <button
+            type="button"
             onClick={() => {
               setActivePortal('parent');
               setErrorMessage(null);
               setSuccessMessage(null);
+              setUsernameInput('');
+              setNiyInput('');
+              setPasswordInput('');
+              setNisInput('');
             }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
               activePortal === 'parent'
                 ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <Users className="w-4 h-4 shrink-0" />
@@ -272,15 +304,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Tab 4: Super Admin */}
           <button
+            type="button"
             onClick={() => {
               setActivePortal('superadmin');
               setErrorMessage(null);
               setSuccessMessage(null);
+              setUsernameInput('');
+              setNiyInput('');
+              setPasswordInput('');
+              setNisInput('');
             }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+            className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer ${
               activePortal === 'superadmin'
                 ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-blue-950 shadow-md font-black'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             <Sparkles className="w-4 h-4 shrink-0" />
@@ -308,8 +345,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* 1. PORTAL GURU KHUSUS */}
           {activePortal === 'teacher' && (
             <form onSubmit={handleTeacherLogin} className="space-y-3.5">
-              <div className="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-3 text-teal-950 font-medium leading-relaxed">
-                Masuk sebagai <strong>Guru Al-Qur'an</strong> untuk menginput nilai jilid/tartil, turjuman, tahfidz juz, hadits, dan mencetak raport halaqah.
+              <div className="bg-teal-50/80 border border-teal-200/80 rounded-2xl p-3 text-teal-950 font-medium leading-relaxed">
+                Masuk sebagai <strong>Guru Al-Qur'an</strong> untuk menginput nilai jilid/tartil, turjuman, tahfidz juz, hadits, dan mencetak raport santri halaqah.
               </div>
 
               <div>
@@ -323,35 +360,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="Contoh: mujiono / M. Mujiono"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-teal-600 outline-hidden shadow-2xs"
+                    placeholder="Masukkan username atau nama guru terdaftar..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-teal-600 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
-                  NIY (Nomor Induk Yayasan) <span className="text-rose-500">*</span>
+                  Password atau NIY (Nomor Induk Yayasan) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="text"
+                    type="password"
                     required
                     value={niyInput}
                     onChange={(e) => setNiyInput(e.target.value)}
-                    placeholder="Contoh: NIY. 20240201"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-teal-600 outline-hidden shadow-2xs"
+                    placeholder="Masukkan password atau NIY guru..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-teal-600 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
-                <span className="text-[10.5px] text-slate-400 mt-1 block">
-                  * Diberikan oleh koordinator / admin yayasan
-                </span>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-md shadow-teal-700/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
               >
                 <span>Masuk Portal Guru</span>
                 <ArrowRight className="w-4 h-4" />
@@ -362,13 +396,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* 2. PORTAL ADMIN KHUSUS */}
           {activePortal === 'admin' && (
             <form onSubmit={handleAdminLogin} className="space-y-3.5">
-              <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3 text-blue-950 font-medium leading-relaxed">
+              <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-3 text-blue-950 font-medium leading-relaxed">
                 Masuk sebagai <strong>Admin Khusus / Koordinator</strong> untuk memantau nilai santri seluruh kelas, statistik kelulusan, dan cetak massal.
               </div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
-                  Username / Nama Admin <span className="text-rose-500">*</span>
+                  Username / Nama Admin Koordinator <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -377,32 +411,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="Contoh: admin.quran / Ahmad Fauzi"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-blue-800 outline-hidden shadow-2xs"
+                    placeholder="Masukkan username admin..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-blue-800 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
-                  NIY (Nomor Induk Yayasan) <span className="text-rose-500">*</span>
+                  Password atau NIY Koordinator <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="text"
+                    type="password"
                     required
                     value={niyInput}
                     onChange={(e) => setNiyInput(e.target.value)}
-                    placeholder="Contoh: NIY. 20240101"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-800 outline-hidden shadow-2xs"
+                    placeholder="Masukkan password atau NIY..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-800 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl shadow-md shadow-blue-900/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-full py-2.5 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl shadow-md shadow-blue-900/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
               >
                 <span>Masuk Portal Admin Khusus</span>
                 <ArrowRight className="w-4 h-4" />
@@ -413,13 +447,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* 3. PORTAL WALI MURID */}
           {activePortal === 'parent' && (
             <form onSubmit={handleParentLogin} className="space-y-3.5">
-              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-emerald-950 font-medium leading-relaxed">
+              <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3 text-emerald-950 font-medium leading-relaxed">
                 Portal khusus <strong>Wali Santri / Orang Tua</strong> untuk melihat hasil raport Al-Qur'an, capaian hafalan juz, turjuman, hadits, dan unduh PDF resmi.
               </div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
-                  Nomor Induk Santri (NIS) atau Nama Ananda <span className="text-rose-500">*</span>
+                  Nomor Induk Santri (NIS) atau Nama Lengkap Ananda <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -428,18 +462,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={nisInput}
                     onChange={(e) => setNisInput(e.target.value)}
-                    placeholder="Contoh: 2024001 atau Muhammad Rayhan"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-600 outline-hidden shadow-2xs"
+                    placeholder="Masukkan NIS (contoh: 2311063106) atau Nama Santri..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-600 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
-                <span className="text-[10.5px] text-slate-400 mt-1 block">
-                  * Cukup masukkan NIS atau nama santri yang terdaftar di yayasan
+                <span className="text-[10.5px] text-slate-500 mt-1 block font-medium">
+                  * Masukkan NIS atau nama santri sesuai data yang terdaftar di lembaga
                 </span>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md shadow-emerald-700/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md shadow-emerald-700/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
               >
                 <span>Buka Raport Santri</span>
                 <ArrowRight className="w-4 h-4" />
@@ -465,8 +499,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="superadmin"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-hidden shadow-2xs"
+                    placeholder="Masukkan username superadmin..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
               </div>
@@ -482,15 +516,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-hidden shadow-2xs"
+                    placeholder="Masukkan password superadmin..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 outline-hidden shadow-2xs text-xs"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-blue-950 font-black rounded-xl shadow-md shadow-amber-500/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-blue-950 font-black rounded-xl shadow-md shadow-amber-500/20 active:scale-98 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
               >
                 <span>Masuk Super Admin</span>
                 <ArrowRight className="w-4 h-4" />
@@ -499,15 +533,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="mt-5 pt-3.5 border-t border-slate-200 flex items-center justify-between text-xs">
-          <span className="text-slate-400 text-[11px]">Sistem E-Raport Lembaga Al-Qur'an</span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors ml-auto"
-          >
-            Tutup
-          </button>
+        {/* Footer (Clean & Secure without Close Button) */}
+        <div className="mt-5 pt-3.5 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500 font-medium">
+          <span className="text-slate-500 text-[11px] font-semibold">Sistem E-Raport Al-Qur'an</span>
+          <div className="flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 font-bold text-[10.5px]">
+            <Lock className="w-3 h-3 text-amber-600" />
+            <span>Terproteksi Password</span>
+          </div>
         </div>
       </div>
     </div>
