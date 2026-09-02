@@ -964,6 +964,289 @@ export async function parseUsersFromExcel(
 }
 
 /**
+ * Unduh Template Excel Resmi untuk Menambah / Mengimpor Data Santri dalam Jumlah Banyak
+ */
+export function downloadStudentImportTemplate(classes: ClassRoom[] = []) {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Template Data Santri
+  const templateRows: any[][] = [
+    [
+      'NO',
+      'NIS',
+      'NAMA_SANTRI',
+      'JENIS_KELAMIN',
+      'KELAS',
+      'NAMA_ORANG_TUA',
+      'NO_WHATSAPP_WALI'
+    ],
+    // Sample Row 1 (Laki-laki)
+    [
+      1,
+      '2311063101',
+      'MUHAMMAD DZAKKI RAMADHAN',
+      'L',
+      classes.length > 0 ? classes[0].name : 'IX A - AL HAITAMI',
+      'H. Bambang Irawan',
+      '081234567890'
+    ],
+    // Sample Row 2 (Perempuan)
+    [
+      2,
+      '2311063102',
+      'AISYAH AZ-ZAHRA HUMAIRA',
+      'P',
+      classes.length > 1 ? classes[1].name : (classes[0]?.name || 'IX B - IBNU SINA'),
+      'Drs. Hendro Wibowo',
+      '081234567891'
+    ],
+    // Sample Row 3 (Laki-laki)
+    [
+      3,
+      '2311063103',
+      'FATHAN AL-FARISI',
+      'L',
+      classes.length > 0 ? classes[0].name : 'IX A - AL HAITAMI',
+      'Rudi Hartono, S.T',
+      '081234567892'
+    ],
+    // Sample Row 4 (Perempuan)
+    [
+      4,
+      '2311063104',
+      'KHANSA NABILA PUTRI',
+      'P',
+      classes.length > 2 ? classes[2].name : (classes[0]?.name || 'VIII A - AL KHINDI'),
+      'Ahmad Sofyan',
+      '081234567893'
+    ],
+  ];
+
+  const wsTemplate = XLSX.utils.aoa_to_sheet(templateRows);
+
+  // Set Column Widths
+  wsTemplate['!cols'] = [
+    { wch: 6 },  // NO
+    { wch: 18 }, // NIS
+    { wch: 36 }, // NAMA_SANTRI
+    { wch: 16 }, // JENIS_KELAMIN (L / P)
+    { wch: 30 }, // KELAS
+    { wch: 30 }, // NAMA_ORANG_TUA
+    { wch: 20 }, // NO_WHATSAPP_WALI
+  ];
+
+  XLSX.utils.book_append_sheet(wb, wsTemplate, 'Data Santri (Import)');
+
+  // Sheet 2: Petunjuk & Daftar Kelas Terdaftar
+  const guideRows: any[][] = [
+    ['PANDUAN & PETUNJUK PENGISIAN IMPORT EXCEL DATA SANTRI'],
+    [''],
+    ['1. KOLOM NO', ':', 'Nomor urut data (opsional/otomatis).'],
+    ['2. KOLOM NIS', ':', 'Wajib diisi dengan Nomor Induk Santri/Siswa yang unik (Contoh: 2311063101).'],
+    ['3. KOLOM NAMA_SANTRI', ':', 'Wajib diisi dengan nama lengkap santri (Contoh: MUHAMMAD DZAKKI RAMADHAN).'],
+    ['4. KOLOM JENIS_KELAMIN', ':', 'Wajib diisi dengan kode "L" (Laki-laki) atau "P" (Perempuan).'],
+    ['5. KOLOM KELAS', ':', 'Wajib diisi dengan nama kelas/halaqah yang terdaftar di sistem (lihat tabel di bawah).'],
+    ['6. KOLOM NAMA_ORANG_TUA', ':', 'Opsional. Nama Ayah/Ibu/Wali santri.'],
+    ['7. KOLOM NO_WHATSAPP_WALI', ':', 'Opsional. Nomor WhatsApp wali santri untuk pengiriman laporan raport & notifikasi.'],
+    [''],
+    ['DAFTAR NAMA KELAS / HALAQAH YANG TERDAFTAR SAAT INI (Bisa disalin persis ke kolom KELAS):'],
+    ['NO', 'NAMA KELAS', 'TARGET HAFALAN', 'GURU PENGAMPU']
+  ];
+
+  classes.forEach((cls, idx) => {
+    guideRows.push([
+      idx + 1,
+      cls.name,
+      cls.targetHafalan || '-',
+      cls.teacherName || '-'
+    ]);
+  });
+
+  if (classes.length === 0) {
+    guideRows.push([1, 'Belum ada kelas terdaftar di aplikasi', '-', '-']);
+  }
+
+  const wsGuide = XLSX.utils.aoa_to_sheet(guideRows);
+  wsGuide['!cols'] = [
+    { wch: 6 },
+    { wch: 30 },
+    { wch: 20 },
+    { wch: 28 }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'Petunjuk & Daftar Kelas');
+
+  // Unduh Berkas
+  XLSX.writeFile(wb, 'Template_Import_Data_Santri.xlsx');
+}
+
+/**
+ * Parsing & Validasi Berkas Excel Santri untuk Tambah / Import Santri Massal
+ */
+export async function parseStudentsFromExcel(
+  file: File,
+  classes: ClassRoom[] = []
+): Promise<{
+  parsedStudents: Array<{
+    nis: string;
+    name: string;
+    gender: 'L' | 'P';
+    classId: string;
+    className: string;
+    parentName: string;
+    parentPhone: string;
+    isValid: boolean;
+    errorReason?: string;
+  }>;
+  totalRows: number;
+  validCount: number;
+  invalidCount: number;
+}> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Gunakan sheet pertama
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+        if (!rawRows || rawRows.length < 2) {
+          resolve({ parsedStudents: [], totalRows: 0, validCount: 0, invalidCount: 0 });
+          return;
+        }
+
+        // Cari baris header
+        let headerRowIndex = 0;
+        let headerMap: Record<string, number> = {};
+
+        for (let i = 0; i < Math.min(rawRows.length, 5); i++) {
+          const row = rawRows[i];
+          if (Array.isArray(row)) {
+            const rowStr = row.map((cell) => String(cell || '').trim().toLowerCase());
+            if (rowStr.some((c) => c.includes('nis') || c.includes('santri') || c.includes('nama') || c.includes('siswa'))) {
+              headerRowIndex = i;
+              row.forEach((colName: any, colIdx: number) => {
+                const norm = String(colName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                headerMap[norm] = colIdx;
+              });
+              break;
+            }
+          }
+        }
+
+        const getColVal = (row: any[], keys: string[]): string => {
+          for (const k of keys) {
+            const idx = headerMap[k];
+            if (idx !== undefined && row[idx] !== undefined) {
+              const val = String(row[idx]).trim();
+              if (val.length > 0) return val;
+            }
+          }
+          return '';
+        };
+
+        const parsedStudents: any[] = [];
+        let validCount = 0;
+        let invalidCount = 0;
+
+        for (let r = headerRowIndex + 1; r < rawRows.length; r++) {
+          const row = rawRows[r];
+          if (!row || !Array.isArray(row) || row.every((c) => String(c || '').trim() === '')) {
+            continue; // Lewati baris kosong
+          }
+
+          const rawNis = getColVal(row, ['nis', 'noinduk', 'nomorinduk', 'id', 'nissiswa', 'nissantri']);
+          const rawName = getColVal(row, ['namasantri', 'nama', 'namalengkap', 'fullname', 'name', 'namasiswa', 'santri']);
+          const rawGender = getColVal(row, ['jeniskelamin', 'jk', 'gender', 'lp', 'sex']).toUpperCase();
+          const rawClass = getColVal(row, ['kelas', 'namakelas', 'rombel', 'halaqah', 'class', 'classid']);
+          const rawParentName = getColVal(row, ['namaorangtua', 'namaortu', 'orangtua', 'wali', 'namawali', 'parent', 'parentname']);
+          const rawParentPhone = getColVal(row, ['nowhatsappwali', 'nowhatsapp', 'whatsapp', 'wa', 'nohp', 'hp', 'phone', 'kontak', 'kontakwali', 'telepon']);
+
+          let isValid = true;
+          let errorReason = '';
+
+          if (!rawNis) {
+            isValid = false;
+            errorReason = 'NIS wajib diisi';
+          } else if (!rawName) {
+            isValid = false;
+            errorReason = 'Nama santri wajib diisi';
+          }
+
+          // Normalisasi Gender
+          let cleanGender: 'L' | 'P' = 'L';
+          if (rawGender.startsWith('P') || rawGender.includes('PEREMPUAN') || rawGender.includes('AKHWAT') || rawGender.includes('FEMALE') || rawGender === 'F') {
+            cleanGender = 'P';
+          } else {
+            cleanGender = 'L';
+          }
+
+          // Resolusi Kelas
+          let resolvedClassId = classes[0]?.id || 'class-default';
+          let resolvedClassName = classes[0]?.name || 'Kelas Utama';
+
+          if (rawClass && classes.length > 0) {
+            const matched = classes.find(
+              (c) =>
+                c.name.toLowerCase() === rawClass.toLowerCase() ||
+                c.id.toLowerCase() === rawClass.toLowerCase() ||
+                c.name.toLowerCase().includes(rawClass.toLowerCase()) ||
+                rawClass.toLowerCase().includes(c.name.toLowerCase())
+            );
+
+            if (matched) {
+              resolvedClassId = matched.id;
+              resolvedClassName = matched.name;
+            } else {
+              resolvedClassName = rawClass;
+            }
+          }
+
+          if (isValid) {
+            validCount++;
+          } else {
+            invalidCount++;
+          }
+
+          parsedStudents.push({
+            nis: rawNis,
+            name: rawName.toUpperCase(),
+            gender: cleanGender,
+            classId: resolvedClassId,
+            className: resolvedClassName,
+            parentName: rawParentName,
+            parentPhone: rawParentPhone,
+            isValid,
+            errorReason,
+          });
+        }
+
+        resolve({
+          parsedStudents,
+          totalRows: parsedStudents.length,
+          validCount,
+          invalidCount,
+        });
+      } catch (err: any) {
+        reject(new Error(err?.message || 'Gagal membaca berkas Excel. Pastikan format sesuai template.'));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Terjadi kesalahan saat membaca file.'));
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
  * Print standard report directly using native browser print dialog.
  */
 export function printElementDirectly(elementId: string) {
