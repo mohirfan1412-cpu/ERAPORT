@@ -36,7 +36,12 @@ export interface ClassRoom {
 export interface SchoolSettings {
   schoolName: string;
   schoolSubName?: string; // e.g. "SEKOLAH MENENGAH PERTAMA ISLAM TERPADU"
-  logoUrl?: string; // custom logo data URL or link
+  logoUrl?: string; // Logo Utama (Kiri)
+  secondaryLogoUrl?: string; // Logo Kanan / Logo yang satunya (Logo UMMI / Kemenag / Mitra / Pesantren)
+  showSecondaryLogo?: boolean; // Tampilkan logo kanan (default true)
+  showHaditsSection?: boolean; // Tampilkan format hafalan hadits (default false, bisa diaktifkan/dinonaktifkan kapan saja)
+  haditsSectionTitle?: string; // Judul bagian hadits (bisa diganti sesuai keinginan, default: "III. HAFALAN HADITS")
+  haditsNames?: Partial<Record<keyof HaditsItemScores, string>>; // Nama-nama hadits 1-10 yang bisa diganti sesuai keinginan
   academicYear: string; // e.g. "2025/2026"
   semester: 'GANJIL' | 'GENAP';
   issueCity: string; // e.g. "Balikpapan"

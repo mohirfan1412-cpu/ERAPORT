@@ -14,6 +14,8 @@ import {
   Database,
   LogOut,
   Sparkles,
+  Globe,
+  Share2,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -27,6 +29,8 @@ interface NavbarProps {
   onOpenBackupModal: () => void;
   onOpenGoogleDbModal?: () => void;
   onOpenUserManager?: () => void;
+  onOpenSearchModal?: () => void;
+  onOpenInteroperabilityModal?: () => void;
   onLogout?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
@@ -43,6 +47,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBackupModal,
   onOpenGoogleDbModal,
   onOpenUserManager,
+  onOpenSearchModal,
+  onOpenInteroperabilityModal,
   onLogout,
   isGoogleConnected = false,
   googleDbState,
@@ -164,13 +170,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Right: User Profile & Logout Button */}
+          {/* Right: Search & User Profile & Logout Button */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Universal Search Quick Button */}
+            {onOpenSearchModal && (
+              <button
+                id="btn-navbar-quick-search"
+                onClick={onOpenSearchModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                title="Pencarian Cepat Semua Data Santri & Raport"
+              >
+                <Search className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span className="hidden sm:inline">Cari Data</span>
+              </button>
+            )}
+
             {/* User Profile Badge (Clickable) */}
             <button
               id="btn-user-role-badge"
               onClick={onOpenAuthModal}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-2.5 py-1.5 rounded-xl sm:rounded-2xl transition-all text-left backdrop-blur-xl group shadow-xs active:scale-95"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-amber-400/40 px-2.5 py-1.5 rounded-xl sm:rounded-2xl transition-all text-left backdrop-blur-xl group shadow-xs active:scale-95 cursor-pointer"
               title="Profil Pengguna & Ganti Akun"
             >
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-blue-950 flex items-center justify-center font-bold text-xs shadow-md shadow-amber-400/20 shrink-0">
@@ -207,7 +226,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-navbar-logout"
               onClick={handleLogoutClick}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-xs font-bold transition-all shadow-xs active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-200 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
               title="Keluar / Buka Portal Login"
             >
               <LogOut className="w-3.5 h-3.5 text-rose-300 shrink-0" />
@@ -225,11 +244,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {onOpenInteroperabilityModal && (
+                <button
+                  id="subnav-superadmin-open-data"
+                  onClick={onOpenInteroperabilityModal}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-cyan-100 bg-cyan-500/25 hover:bg-cyan-500/35 border border-cyan-400/40 text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                  title="Pusat Integrasi & Keterbacaan Data di Sistem Lain (EMIS, Dapodik, SEO, JSON API)"
+                >
+                  <Globe className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                  <span>Integrasi & Open Data</span>
+                  <span className="bg-cyan-400 text-blue-950 text-[9px] font-black px-1.5 py-0.2 rounded-full hidden sm:inline-block">
+                    API / SEO
+                  </span>
+                </button>
+              )}
+
               {onOpenUserManager && (
                 <button
                   id="subnav-superadmin-user-manager"
                   onClick={onOpenUserManager}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-100 bg-amber-500/25 hover:bg-amber-500/35 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-100 bg-amber-500/25 hover:bg-amber-500/35 border border-amber-400/40 text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
                   title="Kelola Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin"
                 >
                   <IdCard className="w-3.5 h-3.5 text-amber-300 shrink-0" />
@@ -246,7 +280,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="subnav-google-database"
                   onClick={onOpenGoogleDbModal}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer ${
                     googleDbState?.isMigrated && isGoogleConnected
                       ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/50 hover:bg-emerald-500/35'
                       : isGoogleConnected
@@ -278,7 +312,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="subnav-quick-settings"
                 onClick={onOpenSettingsModal}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all shadow-xs active:scale-95 shrink-0"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
                 title="Pengaturan Lembaga & Raport"
               >
                 <Settings className="w-3.5 h-3.5 text-amber-300 shrink-0" />
@@ -288,7 +322,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="subnav-quick-backup"
                 onClick={onOpenBackupModal}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all shadow-xs active:scale-95 shrink-0"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
                 title="Backup & Restore Data JSON"
               >
                 <Database className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
@@ -370,3 +404,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+

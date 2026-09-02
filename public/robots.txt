@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /?view=parent
+Allow: /?view=parent&nis=*
+Allow: /?verify=*
+Allow: /sitemap.xml
+Allow: /manifest.json
+
+# Public Open Education Index
+Sitemap: https://eraport-alquran.app/sitemap.xml

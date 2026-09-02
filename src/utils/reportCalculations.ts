@@ -67,6 +67,76 @@ export const HADITS_LIST: { key: keyof HaditsItemScores; title: string }[] = [
   { key: 'laranganTidakMenyapa', title: 'Larangan tidak menyapa' },
 ];
 
+/**
+ * Mengambil daftar nama hadits yang telah disesuaikan (custom names) atau default
+ */
+export function getHaditsList(
+  customNames?: Partial<Record<keyof HaditsItemScores, string>>
+): { key: keyof HaditsItemScores; title: string; defaultTitle: string }[] {
+  return HADITS_LIST.map((h) => ({
+    key: h.key,
+    title: (customNames && customNames[h.key] && customNames[h.key]!.trim().length > 0)
+      ? customNames[h.key]!.trim()
+      : h.title,
+    defaultTitle: h.title,
+  }));
+}
+
+export const HADITS_PRESET_TEMPLATES: {
+  name: string;
+  sectionTitle: string;
+  haditsNames: Record<keyof HaditsItemScores, string>;
+}[] = [
+  {
+    name: 'Standar UMMI (10 Hadits Pilihan)',
+    sectionTitle: 'III. HAFALAN HADITS',
+    haditsNames: {
+      niat: 'Niat',
+      menuntutIlmu: 'Menuntut Ilmu',
+      amalJariyah: '3 Amal Jariyah',
+      menunjukkanKebaikan: 'Menunjukkan Kebaikan',
+      laranganMenyembunyikanIlmu: 'Larangan Menyembunyikan ilmu',
+      ikhlas: 'Ikhlas',
+      rukunIslam: 'Rukun Islam',
+      mukminSempurna: 'Mukmin Sempurna',
+      ridhoOrangTua: 'Ridho Orang tua',
+      laranganTidakMenyapa: 'Larangan tidak menyapa',
+    },
+  },
+  {
+    name: 'Hadits Adab & Akhlak Santri',
+    sectionTitle: 'III. HAFALAN HADITS AKHLAK & ADAB',
+    haditsNames: {
+      niat: 'Niat & Keikhlasan',
+      menuntutIlmu: 'Keutamaan Belajar',
+      amalJariyah: 'Sedekah & Jariyah',
+      menunjukkanKebaikan: 'Tolong Menolong',
+      laranganMenyembunyikanIlmu: 'Menyampaikan Ilmu',
+      ikhlas: 'Adab Berbicara',
+      rukunIslam: 'Menjaga Kebersihan',
+      mukminSempurna: 'Menyayangi Saudara',
+      ridhoOrangTua: 'Birrul Walidain',
+      laranganTidakMenyapa: 'Menyebarkan Salam',
+    },
+  },
+  {
+    name: 'Hadits & Doa Harian',
+    sectionTitle: 'III. HAFALAN HADITS & DOA HARIAN',
+    haditsNames: {
+      niat: 'Hadits Niat',
+      menuntutIlmu: 'Hadits Menuntut Ilmu',
+      amalJariyah: 'Hadits Senyum Shodaqoh',
+      menunjukkanKebaikan: 'Hadits Menahan Marah',
+      laranganMenyembunyikanIlmu: 'Doa Sebelum Belajar',
+      ikhlas: 'Doa Kebaikan Dunia Akhirat',
+      rukunIslam: 'Doa Masuk Masjid',
+      mukminSempurna: 'Doa Keluar Masjid',
+      ridhoOrangTua: 'Doa Untuk Orang Tua',
+      laranganTidakMenyapa: 'Doa Kafaratul Majlis',
+    },
+  },
+];
+
 export const JUZ_LIST = [
   { key: 'juz30', label: 'Juz 30' },
   { key: 'juz29', label: 'Juz 29' },

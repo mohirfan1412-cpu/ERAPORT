@@ -4,18 +4,23 @@ interface KopLogoProps {
   logoUrl?: string;
   className?: string;
   size?: number;
+  alt?: string;
 }
 
+/**
+ * Komponen Logo Utama (Kiri Kop Raport)
+ */
 export const KopLogo: React.FC<KopLogoProps> = ({
   logoUrl,
   className = '',
   size = 64,
+  alt = 'Logo Lembaga',
 }) => {
   if (logoUrl && logoUrl.trim() !== '') {
     return (
       <img
         src={logoUrl}
-        alt="Logo Lembaga"
+        alt={alt}
         className={`object-contain rounded-full ${className}`}
         style={{ width: `${size}px`, height: `${size}px` }}
         crossOrigin="anonymous"
@@ -115,6 +120,120 @@ export const KopLogo: React.FC<KopLogoProps> = ({
           UMMI & TAHFIDZ
         </text>
       </svg>
+    </div>
+  );
+};
+
+interface SecondaryLogoProps {
+  logoUrl?: string;
+  className?: string;
+  size?: number;
+  show?: boolean;
+}
+
+/**
+ * Komponen Logo Kedua (Logo Kanan Kop Raport / Logo Yang Satunya)
+ * Mendukung kustomisasi gambar (upload/link) atau preset Mutu UMMI / Kemenag / Kemendikbud
+ */
+export const SecondaryLogo: React.FC<SecondaryLogoProps> = ({
+  logoUrl,
+  className = '',
+  size = 64,
+  show = true,
+}) => {
+  if (!show) return null;
+
+  // Custom image (Data URL / external link)
+  if (logoUrl && logoUrl.trim() !== '' && !logoUrl.startsWith('preset:')) {
+    return (
+      <img
+        src={logoUrl}
+        alt="Logo Kanan"
+        className={`object-contain rounded-full ${className}`}
+        style={{ width: `${size}px`, height: `${size}px` }}
+        crossOrigin="anonymous"
+      />
+    );
+  }
+
+  // Preset: Kemenag RI (Ikhlas Beramal)
+  if (logoUrl === 'preset:kemenag') {
+    return (
+      <div
+        className={`inline-flex items-center justify-center select-none ${className}`}
+        style={{ width: `${size}px`, height: `${size}px` }}
+      >
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <polygon points="50,4 96,50 50,96 4,50" fill="#047857" stroke="#fbbf24" strokeWidth="3" />
+          <polygon points="50,14 86,50 50,86 14,50" fill="#ffffff" stroke="#047857" strokeWidth="1.5" />
+          <circle cx="50" cy="50" r="24" fill="#065f46" stroke="#fbbf24" strokeWidth="1.5" />
+          <path d="M 38 48 Q 50 42 62 48 L 60 56 Q 50 50 40 56 Z" fill="#fef08a" stroke="#d97706" strokeWidth="0.8" />
+          <text x="50" y="65" textAnchor="middle" fill="#ffffff" fontSize="5.2" fontWeight="bold" fontFamily="sans-serif">
+            KEMENAG
+          </text>
+        </svg>
+      </div>
+    );
+  }
+
+  // Preset: Kemendikbudristek (Tut Wuri Handayani)
+  if (logoUrl === 'preset:kemendikbud') {
+    return (
+      <div
+        className={`inline-flex items-center justify-center select-none ${className}`}
+        style={{ width: `${size}px`, height: `${size}px` }}
+      >
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <circle cx="50" cy="50" r="46" fill="#0284c7" stroke="#fbbf24" strokeWidth="3" />
+          <circle cx="50" cy="50" r="38" fill="#ffffff" stroke="#0284c7" strokeWidth="1.5" />
+          {/* Flame & Wings */}
+          <path d="M 50 25 C 44 35 46 45 50 48 C 54 45 56 35 50 25 Z" fill="#dc2626" />
+          <path d="M 32 50 C 40 46 48 52 50 58 C 44 58 36 56 32 50 Z" fill="#0284c7" />
+          <path d="M 68 50 C 60 46 52 52 50 58 C 56 58 64 56 68 50 Z" fill="#0284c7" />
+          {/* Rehal Book */}
+          <path d="M 38 66 L 50 60 L 62 66" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" />
+          <text x="50" y="76" textAnchor="middle" fill="#0369a1" fontSize="5" fontWeight="bold" fontFamily="sans-serif">
+            TUT WURI
+          </text>
+        </svg>
+      </div>
+    );
+  }
+
+  // Preset: Standard UMMI Foundation Vector Logo
+  if (logoUrl === 'preset:ummi_vector') {
+    return (
+      <div
+        className={`inline-flex items-center justify-center select-none ${className}`}
+        style={{ width: `${size}px`, height: `${size}px` }}
+      >
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <circle cx="50" cy="50" r="46" fill="#000080" stroke="#f59e0b" strokeWidth="2.5" />
+          <circle cx="50" cy="50" r="38" fill="#ffffff" stroke="#000080" strokeWidth="1.2" />
+          <path d="M 50 26 C 40 26 34 34 34 44 C 34 54 42 62 50 62 C 58 62 66 54 66 44 C 66 34 60 26 50 26 Z" fill="#059669" opacity="0.15" />
+          {/* Mushaf */}
+          <path d="M 33 60 L 50 52 L 67 60 M 36 60 L 50 54 L 64 60" stroke="#92400e" strokeWidth="2" strokeLinecap="round" />
+          <path d="M 50 50 C 44 48 36 49 32 53 L 32 40 C 37 36 44 35 50 37 Z" fill="#fef08a" stroke="#000080" strokeWidth="1.2" />
+          <path d="M 50 50 C 56 48 64 49 68 53 L 68 40 C 63 36 56 35 50 37 Z" fill="#fef08a" stroke="#000080" strokeWidth="1.2" />
+          <text x="50" y="73" textAnchor="middle" fill="#000080" fontSize="6.5" fontWeight="900" fontFamily="sans-serif" letterSpacing="0.5">
+            UMMI
+          </text>
+        </svg>
+      </div>
+    );
+  }
+
+  // Default: Official Mutu UMMI Terjamin Seal Badge (High contrast & perfectly legible)
+  return (
+    <div
+      className={`inline-flex items-center justify-center select-none ${className}`}
+      style={{ width: `${size}px`, height: `${size}px` }}
+    >
+      <div className="w-full h-full rounded-full border-2 border-dashed border-[#000080] bg-white flex flex-col items-center justify-center text-[8.5px] font-bold text-[#000080] text-center p-1 leading-none shadow-2xs">
+        <span className="text-[7.5px] font-bold text-slate-700 tracking-wider">MUTU</span>
+        <span className="text-[#059669] font-black my-0.5 text-[9.5px] tracking-tight">UMMI</span>
+        <span className="text-[7px] font-extrabold text-[#000080]">TERJAMIN</span>
+      </div>
     </div>
   );
 };

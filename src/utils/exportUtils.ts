@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import { Student, ClassRoom, StudentReport, SchoolSettings } from '../types';
-import { HADITS_LIST } from './reportCalculations';
+import { HADITS_LIST, getHaditsList } from './reportCalculations';
 
 /**
  * Robust, perfectly symmetrical Export Raport Al-Qur'an to PDF (Format F4 / Folio: 215mm x 330mm).
@@ -58,7 +58,7 @@ export async function exportReportToPdf(elementId: string, filename: string): Pr
     element.style.borderRadius = '0px';
     element.style.backgroundColor = '#ffffff';
     element.style.margin = '0';
-    element.style.padding = '24px 28px';
+    element.style.padding = '20px 24px';
 
     // Capture using html-to-image with pixelRatio 3 for razor-sharp typography
     const dataUrl = await toPng(element, {
@@ -211,7 +211,7 @@ export async function generateReportPdfBlob(elementId: string): Promise<Blob | n
     element.style.borderRadius = '0px';
     element.style.backgroundColor = '#ffffff';
     element.style.margin = '0';
-    element.style.padding = '24px 28px';
+    element.style.padding = '20px 24px';
 
     const dataUrl = await toPng(element, {
       quality: 1,
@@ -414,25 +414,29 @@ export function exportReportToExcel(
     ['Catatan Guru Tahfidz:', hafalanData.catatanGuru || '-'],
     [],
 
-    // Section III Title
-    ['III. HAFALAN HADITS'],
-    ['NO', 'Jenis Evaluasi', ...HADITS_LIST.map((h) => h.title)],
-    [
-      1,
-      'Hafalan Hadits',
-      haditsData.scores.niat ?? 85,
-      haditsData.scores.menuntutIlmu ?? 85,
-      haditsData.scores.amalJariyah ?? 85,
-      haditsData.scores.menunjukkanKebaikan ?? 85,
-      haditsData.scores.laranganMenyembunyikanIlmu ?? 85,
-      haditsData.scores.ikhlas ?? 85,
-      haditsData.scores.rukunIslam ?? 85,
-      haditsData.scores.mukminSempurna ?? 85,
-      haditsData.scores.ridhoOrangTua ?? 85,
-      haditsData.scores.laranganTidakMenyapa ?? 85
-    ],
-    ['Rata-Rata Nilai Hadits:', haditsData.rataRata ?? 85, 'Predikat:', haditsData.predikat || 'Jayyid'],
-    [],
+    // Section III: HAFALAN HADITS (Hanya disertakan jika fitur aktif di pengaturan)
+    ...(settings.showHaditsSection
+      ? [
+          [settings.haditsSectionTitle || 'III. HAFALAN HADITS'],
+          ['NO', 'Jenis Evaluasi', ...getHaditsList(settings.haditsNames).map((h) => h.title)],
+          [
+            1,
+            'Hafalan Hadits',
+            haditsData.scores.niat ?? 85,
+            haditsData.scores.menuntutIlmu ?? 85,
+            haditsData.scores.amalJariyah ?? 85,
+            haditsData.scores.menunjukkanKebaikan ?? 85,
+            haditsData.scores.laranganMenyembunyikanIlmu ?? 85,
+            haditsData.scores.ikhlas ?? 85,
+            haditsData.scores.rukunIslam ?? 85,
+            haditsData.scores.mukminSempurna ?? 85,
+            haditsData.scores.ridhoOrangTua ?? 85,
+            haditsData.scores.laranganTidakMenyapa ?? 85,
+          ],
+          ['Rata-Rata Nilai Hadits:', haditsData.rataRata ?? 85, 'Predikat:', haditsData.predikat || 'Jayyid'],
+          [],
+        ]
+      : []),
 
     // Titimangsa & Pengesahan
     ['Diberikan di', ':', report.issueCity || settings.issueCity || 'Balikpapan'],

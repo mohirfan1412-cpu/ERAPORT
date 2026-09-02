@@ -11,6 +11,10 @@ const STORAGE_KEYS = {
 
 export const DEFAULT_SETTINGS: SchoolSettings = {
   schoolName: 'SMP IT / PESANTREN TAHFIDZ AL-QUR\'AN',
+  logoUrl: undefined,
+  secondaryLogoUrl: undefined,
+  showSecondaryLogo: true,
+  showHaditsSection: false, // Default format hadits dihilangkan, namun disediakan opsi switch untuk diaktifkan kapan saja
   academicYear: '2025/2026',
   semester: 'GENAP',
   issueCity: 'Balikpapan',

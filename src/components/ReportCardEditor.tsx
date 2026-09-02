@@ -4,6 +4,7 @@ import { ReportCardView } from './ReportCardView';
 import {
   HADITS_LIST,
   JUZ_LIST,
+  getHaditsList,
   getPredicateFromScore,
   calculateHaditsAverage,
   DESKRIPSI_PRESETS_TURJUMAN,
@@ -861,8 +862,13 @@ export const ReportCardEditor: React.FC<ReportCardEditorProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between bg-gradient-to-r from-blue-950 via-indigo-950 to-blue-900 text-white px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm border border-blue-800/30">
                   <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                    III. Hafalan Hadits (10 Hadits Pilihan)
+                    <span className={`w-2 h-2 rounded-full ${settings.showHaditsSection ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                    <span>{settings.haditsSectionTitle || 'III. Hafalan Hadits (10 Hadits Pilihan)'}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold normal-case tracking-normal ${
+                      settings.showHaditsSection ? 'bg-emerald-500/30 text-emerald-300' : 'bg-amber-500/30 text-amber-300'
+                    }`}>
+                      {settings.showHaditsSection ? 'Aktif di Raport' : 'Dihilangkan di Raport (Bisa diaktifkan di Pengaturan)'}
+                    </span>
                   </span>
                   <div className="flex items-center gap-1.5 text-[10px]">
                     <span className="font-normal text-blue-200">Isi cepat:</span>
@@ -892,7 +898,7 @@ export const ReportCardEditor: React.FC<ReportCardEditorProps> = ({
 
                 <div className="bg-white/80 backdrop-blur-xs p-4 rounded-2xl border border-blue-100/80 shadow-2xs space-y-3.5">
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                    {HADITS_LIST.map((h, hIdx) => {
+                    {getHaditsList(settings.haditsNames).map((h, hIdx) => {
                       const val = report.hafalanHadits.scores[h.key];
                       return (
                         <div key={h.key} className="bg-white p-2.5 rounded-xl border border-blue-100 shadow-2xs">

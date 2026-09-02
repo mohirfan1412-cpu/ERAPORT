@@ -27,6 +27,8 @@ import {
   ArrowRight,
   ExternalLink,
   LogOut,
+  Globe,
+  Share2,
 } from 'lucide-react';
 
 interface CoordinatorDashboardProps {
@@ -41,6 +43,8 @@ interface CoordinatorDashboardProps {
   onOpenBackupModal: () => void;
   onOpenGoogleDbModal?: () => void;
   onOpenUserManager?: () => void;
+  onOpenInteroperabilityModal?: () => void;
+  onOpenSearchModal?: () => void;
   onLogout?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
@@ -58,6 +62,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   onOpenBackupModal,
   onOpenGoogleDbModal,
   onOpenUserManager,
+  onOpenInteroperabilityModal,
+  onOpenSearchModal,
   onLogout,
   isGoogleConnected = false,
   googleDbState,
@@ -148,11 +154,35 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {onOpenSearchModal && (
+              <button
+                id="btn-open-search-modal"
+                onClick={onOpenSearchModal}
+                className="flex items-center gap-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-2xl border border-white/20 backdrop-blur-xl transition-all active:scale-95 shadow-sm cursor-pointer"
+                title="Pencarian Cepat Semua Data Santri & Nilai Raport"
+              >
+                <Search className="w-4 h-4 text-amber-300" />
+                <span>Cari Data Santri</span>
+              </button>
+            )}
+
+            {onOpenInteroperabilityModal && (
+              <button
+                id="btn-open-interoperability"
+                onClick={onOpenInteroperabilityModal}
+                className="flex items-center gap-2 text-xs font-bold bg-cyan-600/90 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-2xl border border-cyan-400/40 backdrop-blur-xl transition-all active:scale-95 shadow-md shadow-cyan-950/20 cursor-pointer"
+                title="Pusat Integrasi EMIS, Dapodik, Schema.org SEO, dan Standar Open Education JSON/Excel"
+              >
+                <Globe className="w-4 h-4 text-cyan-200" />
+                <span>Integrasi & Open Data</span>
+              </button>
+            )}
+
             {onOpenUserManager && (
               <button
                 id="btn-open-user-manager"
                 onClick={onOpenUserManager}
-                className="flex items-center gap-2 text-xs font-bold bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 px-4 py-2.5 rounded-2xl border border-amber-400/40 backdrop-blur-xl transition-all active:scale-95 shadow-md shadow-blue-950/20"
+                className="flex items-center gap-2 text-xs font-bold bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 px-4 py-2.5 rounded-2xl border border-amber-400/40 backdrop-blur-xl transition-all active:scale-95 shadow-md shadow-blue-950/20 cursor-pointer"
                 title="Kelola Akun Guru, Admin Khusus (NIY), dan Kredensial Super Admin Bebas"
               >
                 <IdCard className="w-4 h-4 text-amber-300" />

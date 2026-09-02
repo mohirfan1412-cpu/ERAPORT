@@ -1,0 +1,16 @@
+{
+  "short_name": "E-Raport UMMI",
+  "name": "E-Raport Al-Qur'an Metode UMMI & Tahfidz",
+  "description": "Sistem Informasi Manajemen & Raport Al-Qur'an Metode UMMI, Tahfidz, dan Hadits terintegrasi Google Workspace dan Open Data API.",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#07193b",
+  "background_color": "#07193b"
+}

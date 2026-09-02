@@ -12,6 +12,8 @@ import { BackupModal } from './components/BackupModal';
 import { AuthModal } from './components/AuthModal';
 import { UserManagerModal } from './components/UserManagerModal';
 import { GoogleDatabaseModal } from './components/GoogleDatabaseModal';
+import { InteroperabilityModal } from './components/InteroperabilityModal';
+import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { getSavedGoogleDatabaseState, initGoogleAuth, getCachedAccessToken, triggerAutoSyncToGoogleSheets } from './utils/googleWorkspace';
 import { CheckCircle, RefreshCw } from 'lucide-react';
 
@@ -34,6 +36,12 @@ export default function App() {
 
   // Navigation View State
   const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'students' | 'classes' | 'parent'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get('view');
+      const nisParam = params.get('nis') || params.get('search');
+      if (viewParam === 'parent' || nisParam) return 'parent';
+    }
     const user = Storage.getCurrentUser();
     if (user.role === 'parent') return 'parent';
     if (user.role === 'teacher') return 'editor';
@@ -46,12 +54,44 @@ export default function App() {
     return st[0]?.id || '';
   });
 
+  // Initial search query for parent portal if deep-linked
+  const [parentInitialSearch, setParentInitialSearch] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('nis') || params.get('search') || '';
+    }
+    return '';
+  });
+
   // Modal States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(true); // Langsung diarahkan ke portal login saat pertama masuk
+  const [isAuthOpen, setIsAuthOpen] = useState(() => {
+    // If opened directly with a deep-link (e.g. from QR scan or ?view=parent&nis=...), do not show auth modal immediately
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') === 'parent' || params.get('nis') || params.get('search') || params.get('verify')) {
+        return false;
+      }
+    }
+    return true; // default prompt on first entry
+  });
   const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
   const [isGoogleDbOpen, setIsGoogleDbOpen] = useState(false);
+  const [isInteroperabilityOpen, setIsInteroperabilityOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Keyboard shortcut for Global Search (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Initialize Google Auth listener
   useEffect(() => {
@@ -197,10 +237,12 @@ export default function App() {
         settings={settings}
         users={users}
         onOpenAuthModal={() => setIsAuthOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsOpen(false)}
         onOpenBackupModal={() => setIsBackupOpen(true)}
         onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
         onOpenUserManager={() => setIsUserManagerOpen(true)}
+        onOpenSearchModal={() => setIsSearchOpen(true)}
+        onOpenInteroperabilityModal={() => setIsInteroperabilityOpen(true)}
         onLogout={handleLogout}
         isGoogleConnected={googleDbState.isConnected}
         googleDbState={googleDbState}
@@ -221,6 +263,8 @@ export default function App() {
             onOpenBackupModal={() => setIsBackupOpen(true)}
             onOpenGoogleDbModal={() => setIsGoogleDbOpen(true)}
             onOpenUserManager={() => setIsUserManagerOpen(true)}
+            onOpenInteroperabilityModal={() => setIsInteroperabilityOpen(true)}
+            onOpenSearchModal={() => setIsSearchOpen(true)}
             onLogout={handleLogout}
             isGoogleConnected={googleDbState.isConnected}
             googleDbState={googleDbState}
@@ -265,6 +309,7 @@ export default function App() {
             classes={classes}
             reports={reports}
             settings={settings}
+            initialSearch={parentInitialSearch}
             onLogout={handleLogout}
           />
         )}
@@ -329,6 +374,33 @@ export default function App() {
         settings={settings}
         users={users}
         onDataRestored={handleDataRestored}
+      />
+
+      {/* Interoperability & Open Data Modal */}
+      <InteroperabilityModal
+        isOpen={isInteroperabilityOpen}
+        onClose={() => setIsInteroperabilityOpen(false)}
+        students={students}
+        classes={classes}
+        reports={reports}
+        settings={settings}
+      />
+
+      {/* Universal Global Search Modal (Ctrl+K) */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        students={students}
+        classes={classes}
+        reports={reports}
+        onSelectStudent={(studentId) => {
+          setSelectedStudentId(studentId);
+          setActiveView('editor');
+        }}
+        onViewParentReport={(nis) => {
+          setParentInitialSearch(nis);
+          setActiveView('parent');
+        }}
       />
     </div>
   );
