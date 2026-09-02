@@ -229,10 +229,10 @@ export const SecondaryLogo: React.FC<SecondaryLogoProps> = ({
       className={`inline-flex items-center justify-center select-none ${className}`}
       style={{ width: `${size}px`, height: `${size}px` }}
     >
-      <div className="w-full h-full rounded-full border-2 border-dashed border-[#000080] bg-white flex flex-col items-center justify-center text-[8.5px] font-bold text-[#000080] text-center p-1 leading-none shadow-2xs">
-        <span className="text-[7.5px] font-bold text-slate-700 tracking-wider">MUTU</span>
-        <span className="text-[#059669] font-black my-0.5 text-[9.5px] tracking-tight">UMMI</span>
-        <span className="text-[7px] font-extrabold text-[#000080]">TERJAMIN</span>
+      <div className="w-full h-full rounded-full border-2 border-dashed border-[#000080] bg-white flex flex-col items-center justify-center text-[#000080] text-center p-1.5 leading-none shadow-xs">
+        <span className="text-[10px] font-bold text-slate-700 tracking-wider">MUTU</span>
+        <span className="text-[#059669] font-black my-0.5 text-[13px] tracking-tight">UMMI</span>
+        <span className="text-[9.5px] font-extrabold text-[#000080]">TERJAMIN</span>
       </div>
     </div>
   );

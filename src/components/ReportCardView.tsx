@@ -40,14 +40,14 @@ export const ReportCardView: React.FC<ReportCardViewProps> = ({
       {/* Top Content: KOP, Data Siswa, Pembelajaran Quran, Hafalan Quran & Hadits */}
       <div className="space-y-3">
         {/* 1. Header Document Title (KOP RAPOT RESMI) */}
-        <div className="flex items-center gap-3.5 border-b-2 border-black pb-2.5">
-          {/* Left: Official Logo */}
-          <div className="shrink-0">
-            <KopLogo logoUrl={settings.logoUrl} size={68} />
+        <div className="flex items-center justify-between gap-4 border-b-2 border-black pb-3">
+          {/* Left: Official Logo (Logo Lembaga/Sekolah) */}
+          <div className="shrink-0 w-[86px] h-[86px] flex items-center justify-center">
+            <KopLogo logoUrl={settings.logoUrl} size={86} />
           </div>
 
           {/* Center: Title & Institution Text */}
-          <div className="flex-1 text-center">
+          <div className="flex-1 text-center px-1">
             <div className="font-bold text-[14px] uppercase tracking-wider text-slate-900 leading-tight">
               {settings.schoolName || 'LEMBAGA PENDIDIKAN ISLAM / PESANTREN TAHFIDZ'}
             </div>
@@ -63,10 +63,10 @@ export const ReportCardView: React.FC<ReportCardViewProps> = ({
           </div>
 
           {/* Right: Secondary Logo (Logo Yang Satunya / UMMI / Kemenag / Mitra) */}
-          <div className="shrink-0 w-[68px] flex items-center justify-center">
+          <div className="shrink-0 w-[86px] h-[86px] flex items-center justify-center">
             <SecondaryLogo
               logoUrl={settings.secondaryLogoUrl}
-              size={68}
+              size={86}
               show={settings.showSecondaryLogo !== false}
             />
           </div>
