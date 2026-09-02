@@ -54,7 +54,7 @@ export const ReportCardView: React.FC<ReportCardViewProps> = ({
             <h1 className="font-extrabold text-[14px] uppercase tracking-wide leading-tight mt-0.5">
               LAPORAN PERKEMBANGAN KOMPETENSI
             </h1>
-            <h2 className="font-extrabold text-[14px] uppercase tracking-wide leading-tight text-[#000080]">
+            <h2 className="font-extrabold text-[14px] uppercase tracking-wide leading-tight text-black">
               AL-QUR'AN METODE UMMI DAN TAHFIDZ
             </h2>
             <h3 className="font-bold text-[12px] uppercase tracking-wider text-slate-800 mt-0.5">
