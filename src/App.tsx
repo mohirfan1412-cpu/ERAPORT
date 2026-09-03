@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount, Student, ClassRoom, StudentReport, SchoolSettings, GoogleUserProfile, GoogleWorkspaceDatabaseState } from './types';
 import { Storage } from './utils/storage';
+import { subscribeToCloudState, testConnection, fetchCloudState, syncStateToFirestore } from './firebase';
 import { Navbar } from './components/Navbar';
 import { CoordinatorDashboard } from './components/CoordinatorDashboard';
 import { ReportCardEditor } from './components/ReportCardEditor';
@@ -15,7 +16,7 @@ import { GoogleDatabaseModal } from './components/GoogleDatabaseModal';
 import { InteroperabilityModal } from './components/InteroperabilityModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { getSavedGoogleDatabaseState, initGoogleAuth, getCachedAccessToken, triggerAutoSyncToGoogleSheets } from './utils/googleWorkspace';
-import { CheckCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle, Cloud, RefreshCw } from 'lucide-react';
 
 export default function App() {
   // Global State
@@ -25,6 +26,10 @@ export default function App() {
   const [classes, setClasses] = useState<ClassRoom[]>(() => Storage.getClasses());
   const [students, setStudents] = useState<Student[]>(() => Storage.getStudents());
   const [reports, setReports] = useState<StudentReport[]>(() => Storage.getReports());
+
+  // Cloud multi-device synchronization status
+  const [cloudSynced, setCloudSynced] = useState<boolean>(true);
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string | null>(null);
 
   // Google Workspace & Sheets Database State
   const [googleProfile, setGoogleProfile] = useState<GoogleUserProfile | null>(null);
@@ -91,6 +96,74 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Initialize Firestore Cloud Sync across all devices & accounts
+  useEffect(() => {
+    testConnection();
+
+    // Fetch initial cloud state
+    fetchCloudState().then((initialCloud) => {
+      if (initialCloud) {
+        if (initialCloud.settings) {
+          setSettings(initialCloud.settings);
+          Storage.saveSettings(initialCloud.settings, false);
+        }
+        if (initialCloud.users && initialCloud.users.length > 0) {
+          setUsers(initialCloud.users);
+          Storage.saveUsers(initialCloud.users, false);
+        }
+        if (initialCloud.classes && initialCloud.classes.length > 0) {
+          setClasses(initialCloud.classes);
+          Storage.saveClasses(initialCloud.classes, false);
+        }
+        if (initialCloud.students && initialCloud.students.length > 0) {
+          setStudents(initialCloud.students);
+          Storage.saveStudents(initialCloud.students, false);
+        }
+        if (initialCloud.reports && initialCloud.reports.length > 0) {
+          setReports(initialCloud.reports);
+          Storage.saveReports(initialCloud.reports, false);
+        }
+      } else {
+        // Upload initial local data to Firestore if cloud is brand new
+        syncStateToFirestore({
+          settings: Storage.getSettings(),
+          users: Storage.getUsers(),
+          classes: Storage.getClasses(),
+          students: Storage.getStudents(),
+          reports: Storage.getReports(),
+        });
+      }
+    });
+
+    // Subscribe to real-time updates from other devices / browsers
+    const unsubscribe = subscribeToCloudState((cloudData) => {
+      if (cloudData.settings) {
+        setSettings(cloudData.settings);
+        Storage.saveSettings(cloudData.settings, false);
+      }
+      if (cloudData.users && cloudData.users.length > 0) {
+        setUsers(cloudData.users);
+        Storage.saveUsers(cloudData.users, false);
+      }
+      if (cloudData.classes && cloudData.classes.length > 0) {
+        setClasses(cloudData.classes);
+        Storage.saveClasses(cloudData.classes, false);
+      }
+      if (cloudData.students && cloudData.students.length > 0) {
+        setStudents(cloudData.students);
+        Storage.saveStudents(cloudData.students, false);
+      }
+      if (cloudData.reports && cloudData.reports.length > 0) {
+        setReports(cloudData.reports);
+        Storage.saveReports(cloudData.reports, false);
+      }
+      setCloudSynced(true);
+      setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID'));
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Initialize Google Auth listener
@@ -262,6 +335,8 @@ export default function App() {
         onLogout={handleLogout}
         isGoogleConnected={googleDbState.isConnected}
         googleDbState={googleDbState}
+        cloudSynced={cloudSynced}
+        lastCloudSyncTime={lastCloudSyncTime}
       />
 
       {/* Main View Router */}

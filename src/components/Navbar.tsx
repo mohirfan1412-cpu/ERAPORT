@@ -16,6 +16,8 @@ import {
   Sparkles,
   Globe,
   Share2,
+  Cloud,
+  Check,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -34,6 +36,8 @@ interface NavbarProps {
   onLogout?: () => void;
   isGoogleConnected?: boolean;
   googleDbState?: GoogleWorkspaceDatabaseState;
+  cloudSynced?: boolean;
+  lastCloudSyncTime?: string | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -52,6 +56,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   isGoogleConnected = false,
   googleDbState,
+  cloudSynced = true,
+  lastCloudSyncTime,
 }) => {
   const handleLogoutClick = () => {
     if (onLogout) {
@@ -172,6 +178,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right: Search & User Profile & Logout Button */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Cloud Real-time Status Badge */}
+            <div
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-[11px] font-semibold"
+              title={lastCloudSyncTime ? `Tersinkronisasi ke Cloud pada ${lastCloudSyncTime}. Perubahan langsung tampil di semua HP, laptop, dan akun lain.` : 'Cloud Database Real-time Aktif. Data tersinkron antar semua perangkat.'}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <Cloud className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+              <span className="hidden xl:inline">Cloud Real-time:</span>
+              <span className="text-emerald-100 font-bold">Tersinkron Antar Device</span>
+            </div>
+
             {/* Universal Search Quick Button */}
             {onOpenSearchModal && (
               <button

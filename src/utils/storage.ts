@@ -1,4 +1,5 @@
 import { Student, ClassRoom, UserAccount, SchoolSettings, StudentReport } from '../types';
+import { syncStateToFirestore } from '../firebase';
 
 const STORAGE_KEYS = {
   SETTINGS: 'eraport_settings_v1',
@@ -452,8 +453,11 @@ export const Storage = {
     const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     return data ? JSON.parse(data) : DEFAULT_SETTINGS;
   },
-  saveSettings: (settings: SchoolSettings) => {
+  saveSettings: (settings: SchoolSettings, syncCloud: boolean = true) => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    if (syncCloud) {
+      syncStateToFirestore({ settings });
+    }
   },
 
   getUsers: (): UserAccount[] => {
@@ -474,8 +478,11 @@ export const Storage = {
       return DEFAULT_USERS;
     }
   },
-  saveUsers: (users: UserAccount[]) => {
+  saveUsers: (users: UserAccount[], syncCloud: boolean = true) => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    if (syncCloud) {
+      syncStateToFirestore({ users });
+    }
   },
   saveOrUpdateUser: (user: UserAccount) => {
     const users = Storage.getUsers();
@@ -543,24 +550,33 @@ export const Storage = {
     const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
     return data ? JSON.parse(data) : DEFAULT_CLASSES;
   },
-  saveClasses: (classes: ClassRoom[]) => {
+  saveClasses: (classes: ClassRoom[], syncCloud: boolean = true) => {
     localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(classes));
+    if (syncCloud) {
+      syncStateToFirestore({ classes });
+    }
   },
 
   getStudents: (): Student[] => {
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
     return data ? JSON.parse(data) : DEFAULT_STUDENTS;
   },
-  saveStudents: (students: Student[]) => {
+  saveStudents: (students: Student[], syncCloud: boolean = true) => {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    if (syncCloud) {
+      syncStateToFirestore({ students });
+    }
   },
 
   getReports: (): StudentReport[] => {
     const data = localStorage.getItem(STORAGE_KEYS.REPORTS);
     return data ? JSON.parse(data) : DEFAULT_REPORTS;
   },
-  saveReports: (reports: StudentReport[]) => {
+  saveReports: (reports: StudentReport[], syncCloud: boolean = true) => {
     localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(reports));
+    if (syncCloud) {
+      syncStateToFirestore({ reports });
+    }
   },
 
   getReportForStudent: (studentId: string): StudentReport | undefined => {
@@ -690,6 +706,13 @@ export const Storage = {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(DEFAULT_STUDENTS));
     localStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(DEFAULT_REPORTS));
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(DEFAULT_USERS[0]));
+    syncStateToFirestore({
+      settings: DEFAULT_SETTINGS,
+      users: DEFAULT_USERS,
+      classes: DEFAULT_CLASSES,
+      students: DEFAULT_STUDENTS,
+      reports: DEFAULT_REPORTS,
+    });
   },
 
   exportDatabaseBackup: () => {
@@ -708,11 +731,18 @@ export const Storage = {
   importDatabaseBackup: (jsonStr: string): boolean => {
     try {
       const data = JSON.parse(jsonStr);
-      if (data.settings) Storage.saveSettings(data.settings);
-      if (data.users) Storage.saveUsers(data.users);
-      if (data.classes) Storage.saveClasses(data.classes);
-      if (data.students) Storage.saveStudents(data.students);
-      if (data.reports) Storage.saveReports(data.reports);
+      if (data.settings) Storage.saveSettings(data.settings, false);
+      if (data.users) Storage.saveUsers(data.users, false);
+      if (data.classes) Storage.saveClasses(data.classes, false);
+      if (data.students) Storage.saveStudents(data.students, false);
+      if (data.reports) Storage.saveReports(data.reports, false);
+      syncStateToFirestore({
+        settings: data.settings || Storage.getSettings(),
+        users: data.users || Storage.getUsers(),
+        classes: data.classes || Storage.getClasses(),
+        students: data.students || Storage.getStudents(),
+        reports: data.reports || Storage.getReports(),
+      });
       return true;
     } catch {
       return false;

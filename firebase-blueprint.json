@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "SchoolSettings": {
+      "title": "SchoolSettings",
+      "description": "School and institutional report card configurations",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "schoolAddress": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "semester": { "type": "string" },
+        "headmasterName": { "type": "string" },
+        "coordinatorName": { "type": "string" },
+        "placeDate": { "type": "string" }
+      }
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "User account for teacher, coordinator, admin, or super admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["id", "username", "name", "role"]
+    },
+    "ClassRoom": {
+      "title": "ClassRoom",
+      "description": "Classroom or halaqah group",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "grade": { "type": "string" },
+        "teacher": { "type": "string" }
+      },
+      "required": ["id", "name", "grade", "teacher"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student / santri record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nis": { "type": "string" },
+        "name": { "type": "string" },
+        "classId": { "type": "string" },
+        "gender": { "type": "string" }
+      },
+      "required": ["id", "nis", "name", "classId"]
+    },
+    "ReportCard": {
+      "title": "ReportCard",
+      "description": "Report card record containing scores and teacher notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "semester": { "type": "string" },
+        "academicYear": { "type": "string" }
+      },
+      "required": ["id", "studentId"]
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": { "$ref": "SchoolSettings" },
+      "description": "Global school settings and metadata"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "UserAccount" },
+      "description": "User accounts and authentication profiles"
+    },
+    "/classes/{classId}": {
+      "schema": { "$ref": "ClassRoom" },
+      "description": "Classrooms and halaqah groups"
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "Student" },
+      "description": "Student information records"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "ReportCard" },
+      "description": "Individual student report card evaluations"
+    },
+    "/app_state/{stateId}": {
+      "schema": { "$ref": "SchoolSettings" },
+      "description": "Synchronized collective state across devices"
+    }
+  }
+}
