@@ -7,7 +7,7 @@ import {
   onSnapshot,
   getDocFromServer,
 } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 import { SchoolSettings, UserAccount, ClassRoom, Student, StudentReport } from './types';
 import { DEFAULT_SETTINGS, DEFAULT_USERS, DEFAULT_CLASSES, DEFAULT_STUDENTS, DEFAULT_REPORTS } from './utils/storage';
@@ -15,6 +15,11 @@ import { DEFAULT_SETTINGS, DEFAULT_USERS, DEFAULT_CLASSES, DEFAULT_STUDENTS, DEF
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Authenticate anonymously so all Firestore operations have valid session credentials
+signInAnonymously(auth).catch((err) => {
+  console.warn('Firebase anonymous auth note:', err);
+});
 
 export enum OperationType {
   CREATE = 'create',
@@ -74,22 +79,30 @@ export interface AppCloudData {
 
 const STATE_DOC = 'global_data_v1';
 
-// Save all state to Cloud Firestore
+// Clean object from undefined properties so Firestore never rejects it
+function sanitizeForFirestore<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
+// Save state to Cloud Firestore
 export async function syncStateToFirestore(data: {
   settings?: SchoolSettings;
   users?: UserAccount[];
   classes?: ClassRoom[];
   students?: Student[];
   reports?: StudentReport[];
-}) {
+}): Promise<boolean> {
   try {
     const payload: Partial<AppCloudData> = {
       ...data,
       lastUpdated: new Date().toISOString(),
     };
-    await setDoc(doc(db, 'app_state', STATE_DOC), payload, { merge: true });
+    const cleanPayload = sanitizeForFirestore(payload);
+    await setDoc(doc(db, 'app_state', STATE_DOC), cleanPayload, { merge: true });
+    return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `app_state/${STATE_DOC}`);
+    return false;
   }
 }
 
@@ -105,20 +118,6 @@ export function subscribeToCloudState(
         if (snapshot.exists()) {
           const cloudData = snapshot.data() as Partial<AppCloudData>;
           onUpdate(cloudData);
-        } else {
-          // If first time, initialize with default / current local storage data
-          const initialPayload: AppCloudData = {
-            settings: DEFAULT_SETTINGS,
-            users: DEFAULT_USERS,
-            classes: DEFAULT_CLASSES,
-            students: DEFAULT_STUDENTS,
-            reports: DEFAULT_REPORTS,
-            lastUpdated: new Date().toISOString(),
-          };
-          setDoc(doc(db, 'app_state', STATE_DOC), initialPayload, { merge: true }).catch((e) =>
-            handleFirestoreError(e, OperationType.WRITE, `app_state/${STATE_DOC}`)
-          );
-          onUpdate(initialPayload);
         }
       },
       (error) => {
@@ -144,5 +143,27 @@ export async function fetchCloudState(): Promise<Partial<AppCloudData> | null> {
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, `app_state/${STATE_DOC}`);
     return null;
+  }
+}
+
+// Force upload current full database to Cloud
+export async function uploadFullDatabaseToCloud(data: {
+  settings: SchoolSettings;
+  users: UserAccount[];
+  classes: ClassRoom[];
+  students: Student[];
+  reports: StudentReport[];
+}): Promise<boolean> {
+  try {
+    const payload: AppCloudData = {
+      ...data,
+      lastUpdated: new Date().toISOString(),
+    };
+    const cleanPayload = sanitizeForFirestore(payload);
+    await setDoc(doc(db, 'app_state', STATE_DOC), cleanPayload, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `app_state/${STATE_DOC}`);
+    return false;
   }
 }

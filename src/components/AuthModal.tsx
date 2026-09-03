@@ -79,7 +79,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     // Find matching teacher
-    const matchedTeacher = users.find((u) => {
+    const candidateUsers = users.length > 0 ? users : Storage.getUsers();
+    const matchedTeacher = candidateUsers.find((u) => {
       if (u.role !== 'teacher') return false;
       const matchNameOrUser = cleanStr(u.username) === cleanUser || cleanStr(u.name).includes(cleanUser);
       const matchPasswordOrNiy =
@@ -115,7 +116,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    const matchedAdmin = users.find((u) => {
+    const candidateUsers = users.length > 0 ? users : Storage.getUsers();
+    const matchedAdmin = candidateUsers.find((u) => {
       if (u.role !== 'coordinator' && u.role !== 'super_admin') return false;
       const matchNameOrUser = cleanStr(u.username) === cleanUser || cleanStr(u.name).includes(cleanUser);
       const matchPasswordOrNiy =
@@ -147,7 +149,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    const matchedStudent = students.find(
+    const candidateStudents = students.length > 0 ? students : Storage.getStudents();
+    const matchedStudent = candidateStudents.find(
       (s) => cleanStr(s.nis) === cleanNis || cleanStr(s.name).includes(cleanNis)
     );
 
@@ -185,7 +188,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    const superAdmin = users.find((u) => u.role === 'super_admin') || users[0];
+    const candidateUsers = users.length > 0 ? users : Storage.getUsers();
+    const superAdmin = candidateUsers.find((u) => u.role === 'super_admin') || candidateUsers[0];
 
     const matchUser =
       cleanStr(superAdmin.username) === cleanUser ||

@@ -7,10 +7,23 @@ interface BackupModalProps {
   onClose: () => void;
   onDataRestored: () => void;
   onOpenGoogleDb?: () => void;
+  onCloudSync?: () => Promise<void>;
+  onPullCloud?: () => Promise<void>;
+  lastCloudSyncTime?: string | null;
 }
 
-export const BackupModal: React.FC<BackupModalProps> = ({ isOpen, onClose, onDataRestored, onOpenGoogleDb }) => {
+export const BackupModal: React.FC<BackupModalProps> = ({
+  isOpen,
+  onClose,
+  onDataRestored,
+  onOpenGoogleDb,
+  onCloudSync,
+  onPullCloud,
+  lastCloudSyncTime,
+}) => {
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [isPullingCloud, setIsPullingCloud] = useState(false);
 
   if (!isOpen) return null;
 
@@ -72,6 +85,60 @@ export const BackupModal: React.FC<BackupModalProps> = ({ isOpen, onClose, onDat
         </div>
 
         <div className="space-y-4 text-xs">
+          {/* Real-time Multi-device Cloud Sync Card */}
+          <div className="p-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-2xl space-y-2.5 shadow-md shadow-emerald-950/20 border border-emerald-700/50">
+            <div className="font-bold flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-emerald-300">
+                <Cloud className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-emerald-100">Database Cloud Antar Perangkat</span>
+              </div>
+              <span className="text-[10px] bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 px-2 py-0.5 rounded-full font-bold uppercase">
+                Aktif & Real-time
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-100/90 leading-relaxed">
+              Memastikan seluruh perubahan santri, nilai raport, kelas, dan akun langsung tersimpan ke Cloud dan otomatis tampil sama di HP, laptop, serta akun lainnya.
+            </p>
+            {lastCloudSyncTime && (
+              <div className="text-[10px] text-emerald-300/80 font-medium">
+                Sinkronisasi terakhir: <span className="font-bold text-white">{lastCloudSyncTime}</span>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                disabled={isCloudSyncing}
+                onClick={async () => {
+                  if (onCloudSync) {
+                    setIsCloudSyncing(true);
+                    await onCloudSync();
+                    setIsCloudSyncing(false);
+                  }
+                }}
+                className="py-2 px-3 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-emerald-950 font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 text-[11px] cursor-pointer disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isCloudSyncing ? 'Mengunggah...' : 'Unggah ke Cloud'}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isPullingCloud}
+                onClick={async () => {
+                  if (onPullCloud) {
+                    setIsPullingCloud(true);
+                    await onPullCloud();
+                    setIsPullingCloud(false);
+                  }
+                }}
+                className="py-2 px-3 bg-emerald-800/80 hover:bg-emerald-700/90 border border-emerald-500/40 active:scale-95 text-emerald-100 font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 text-[11px] cursor-pointer disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isPullingCloud ? 'Memuat...' : 'Tarik dari Cloud'}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Google Sheets / Drive Cloud Database Option */}
           {onOpenGoogleDb && (
             <div className="p-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white rounded-2xl space-y-2 shadow-md shadow-blue-950/20 border border-blue-800">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount, Student, ClassRoom, StudentReport, SchoolSettings, GoogleUserProfile, GoogleWorkspaceDatabaseState } from './types';
 import { Storage } from './utils/storage';
-import { subscribeToCloudState, testConnection, fetchCloudState, syncStateToFirestore } from './firebase';
+import { subscribeToCloudState, testConnection, fetchCloudState, syncStateToFirestore, uploadFullDatabaseToCloud } from './firebase';
 import { Navbar } from './components/Navbar';
 import { CoordinatorDashboard } from './components/CoordinatorDashboard';
 import { ReportCardEditor } from './components/ReportCardEditor';
@@ -256,6 +256,64 @@ export default function App() {
     }
   };
 
+  // Manual Cloud push to Firestore
+  const handleManualCloudSync = async () => {
+    setCloudSynced(false);
+    const success = await uploadFullDatabaseToCloud({
+      settings: Storage.getSettings(),
+      users: Storage.getUsers(),
+      classes: Storage.getClasses(),
+      students: Storage.getStudents(),
+      reports: Storage.getReports(),
+    });
+    if (success) {
+      setCloudSynced(true);
+      const timeStr = new Date().toLocaleTimeString('id-ID');
+      setLastCloudSyncTime(timeStr);
+      setSyncToast(`✅ Berhasil Sinkronisasi Cloud (${timeStr})! Seluruh HP, laptop, dan akun lain kini dapat melihat data yang sama.`);
+      setTimeout(() => setSyncToast(null), 5000);
+    } else {
+      setSyncToast(`⚠️ Gagal menyinkronkan ke Cloud. Silakan periksa jaringan internet.`);
+      setTimeout(() => setSyncToast(null), 5000);
+    }
+  };
+
+  // Manual Cloud pull from Firestore
+  const handlePullCloudData = async () => {
+    setCloudSynced(false);
+    const cloudData = await fetchCloudState();
+    if (cloudData) {
+      if (cloudData.settings) {
+        setSettings(cloudData.settings);
+        Storage.saveSettings(cloudData.settings, false);
+      }
+      if (cloudData.users && cloudData.users.length > 0) {
+        setUsers(cloudData.users);
+        Storage.saveUsers(cloudData.users, false);
+      }
+      if (cloudData.classes && cloudData.classes.length > 0) {
+        setClasses(cloudData.classes);
+        Storage.saveClasses(cloudData.classes, false);
+      }
+      if (cloudData.students && cloudData.students.length > 0) {
+        setStudents(cloudData.students);
+        Storage.saveStudents(cloudData.students, false);
+      }
+      if (cloudData.reports && cloudData.reports.length > 0) {
+        setReports(cloudData.reports);
+        Storage.saveReports(cloudData.reports, false);
+      }
+      setCloudSynced(true);
+      const timeStr = new Date().toLocaleTimeString('id-ID');
+      setLastCloudSyncTime(timeStr);
+      setSyncToast(`📥 Berhasil memuat data terbaru dari Cloud (${timeStr})!`);
+      setTimeout(() => setSyncToast(null), 4000);
+    } else {
+      setSyncToast(`⚠️ Belum ada data tersimpan di Cloud.`);
+      setTimeout(() => setSyncToast(null), 4000);
+    }
+  };
+
   // Save report
   const handleSaveReport = (updatedReport: StudentReport) => {
     Storage.saveOrUpdateReport(updatedReport);
@@ -427,6 +485,9 @@ export default function App() {
         onClose={() => setIsBackupOpen(false)}
         onDataRestored={handleDataRestored}
         onOpenGoogleDb={() => setIsGoogleDbOpen(true)}
+        onCloudSync={handleManualCloudSync}
+        onPullCloud={handlePullCloudData}
+        lastCloudSyncTime={lastCloudSyncTime}
       />
 
       <AuthModal
